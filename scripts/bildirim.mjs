@@ -1,4 +1,4 @@
-// Muhammed Maneviyat Takibi bildirim zamanlayıcısı.
+// Cennet Yolculuğu bildirim zamanlayıcısı.
 // Kullanıcının gizli gist'indeki ayarlara ve günlük kayıtlara bakar, Diyanet vakitlerine göre telefonlara Web Push gönderir.
 // Hata olsa bile 0 ile çıkar; hata gonderim.json'a yazılır ve uygulamada görünür (her çalışmada e-posta gitmesin diye).
 import webpush from "web-push";
@@ -108,7 +108,7 @@ function events(state, bil, vakit, now) {
       if (left.length) out.push({ key: `${D}:okuma`, at: at(D, N.okuma.saat), ttl: 3 * 3600, title: "Okumalarım bitmedi", body: "Kalan: " + left.join(" · "), tag: "okuma" });
     }
   }
-  if (bil?.test) out.push({ key: "test:" + bil.test, at: bil.test, ttl: 3600, title: "Muhammed Maneviyat Takibi", body: "Deneme: zamanlayıcıdan gelen bildirim çalışıyor.", tag: "deneme", always: true });
+  if (bil?.test) out.push({ key: "test:" + bil.test, at: bil.test, ttl: 3600, title: "Cennet Yolculuğu", body: "Deneme: zamanlayıcıdan gelen bildirim çalışıyor.", tag: "deneme", always: true });
   return out;
 }
 
