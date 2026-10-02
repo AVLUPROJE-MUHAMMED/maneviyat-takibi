@@ -299,6 +299,8 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <label class="chk"><input type="checkbox" id="n-atla"> "Kıldım" dediğim vakit için hatırlatma gönderme</label>
       <div class="row"><label class="chk"><input type="checkbox" id="n-pon"> Günün okuma programı</label><input id="n-psaat" type="time" style="width:auto"></div>
       <div class="row"><label class="chk"><input type="checkbox" id="n-oon"> Okumalarım bitmediyse hatırlat</label><input id="n-osaat" type="time" style="width:auto"></div>
+      <label class="chk"><input type="checkbox" id="n-takvim"> Uçak modunda da gelsin (vakit ve program uyarıları iPhone takviminden)</label>
+      <div id="n-takvimbox" class="small muted" hidden></div>
       <div class="row"><button class="btn" id="ntfsave" type="button">Bildirim ayarlarını kaydet</button><span class="small muted" id="ntfmsg"></span></div>
     </fieldset>
 
@@ -917,7 +919,10 @@ function showVakit(){
   if(window.__mt.setVakit) window.__mt.setVakit(server&&server.days&&(!server.ilce||server.ilce===N.ilce.id)?server.days:{});
 }
 let pushBusy=false;
+let takvimVar=false;
 async function notifySync(g){
+  if(g.owner&&g.owner.login&&cfg.owner!==g.owner.login){ cfg.owner=g.owner.login; saveCfg(); }
+  takvimVar=!!(g.files&&g.files["takvim.ics"]);
   const gon=await fileJSON(g,GFILE);
   if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[]};
     try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
@@ -1003,6 +1008,14 @@ async function renderNotify(form){
     (ago==null?"":" Zamanlayıcı en son "+(ago<1?"az önce":ago<120?ago+" dakika önce":Math.round(ago/60)+" saat önce")+" çalıştı.")+
     (server&&server.error?" Son hata: "+server.error:"")+(cfg.gistId?" (not "+cfg.gistId.slice(0,6)+")":"");
   $("ntfsetup").hidden=!(cfg.token&&(!server||!server.last));
+  const NT=window.__mt.get().settings.notify, TB=$("n-takvimbox");
+  TB.hidden=!NT.takvim;
+  if(NT.takvim){
+    if(takvimVar&&cfg.owner&&cfg.gistId){
+      const url="webcal://gist.githubusercontent.com/"+cfg.owner+"/"+cfg.gistId+"/raw/takvim.ics";
+      TB.innerHTML='Takvim hazır. iPhone\'da bir kez abone olun: <a href="'+url+'">Takvime abone ol</a>. Açılan ekranda <b>Abone Ol</b>\'a basın, sonra <b>"Uyarıları Kaldır"</b> seçeneğini <b>kapalı</b> bırakıp <b>Ekle</b>\'ye basın. Takvim kendiliğinden güncellenir; uyarılar internet olmadan da çalar. Takvim açıkken vakit ve program bildirimleri ikinci kez internetten gelmez, "okumalarım bitmedi" hatırlatması internetten gelmeye devam eder.';
+    }else TB.textContent="Takvim hazırlanıyor; zamanlayıcı birkaç dakika içinde oluşturur, sonra burada abone olma bağlantısı çıkar.";
+  }
   if(!form) return;
   const N=window.__mt.get().settings.notify;
   await loadIlce();
@@ -1018,7 +1031,7 @@ async function renderNotify(form){
     V.append(n,t,mk("giris","Vakit girince"),mk("once","Çıkmadan önce"));
   }
   $("n-dk").value=N.dk; $("n-atla").checked=!!N.atla;
-  $("n-oto").checked=!!N.oto;
+  $("n-oto").checked=!!N.oto; $("n-takvim").checked=!!N.takvim;
   $("n-pon").checked=!!N.program.on; $("n-psaat").value=N.program.saat;
   $("n-oon").checked=!!N.okuma.on; $("n-osaat").value=N.okuma.saat;
 }
@@ -1072,12 +1085,12 @@ $("ntfsave").addEventListener("click",()=>{
     const N=s.notify; const ilS=$("n-ilce");
     if(ilS.value) N.ilce={il:$("n-il").value,ad:ilS.options[ilS.selectedIndex].textContent,id:Number(ilS.value)};
     for(const [k] of VK){N.giris[k]=$("n-giris-"+k).checked?1:0;N.once[k]=$("n-once-"+k).checked?1:0}
-    N.dk=Math.max(1,Math.min(180,parseInt($("n-dk").value,10)||30)); N.atla=$("n-atla").checked?1:0;
+    N.dk=Math.max(1,Math.min(180,parseInt($("n-dk").value,10)||30)); N.atla=$("n-atla").checked?1:0; N.takvim=$("n-takvim").checked?1:0;
     const hm=v=>/^\d\d:\d\d$/.test(v)?v:null;
     N.program={on:$("n-pon").checked?1:0,saat:hm($("n-psaat").value)||N.program.saat};
     N.okuma={on:$("n-oon").checked?1:0,saat:hm($("n-osaat").value)||N.okuma.saat};
   });
-  showVakit();
+  showVakit(); renderNotify(false);
   nmsg(cfg.token?"Kaydedildi; zamanlayıcı birkaç dakika içinde yeni ayarlarla çalışır.":"Kaydedildi. Bildirimlerin gelmesi için eşitlemeyi açın.");
 });
 $("ntfon").addEventListener("click",pushOn);

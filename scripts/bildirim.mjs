@@ -75,7 +75,8 @@ function defaultsNotify(n = {}) {
   return {
     ilce: { il: "İSTANBUL", ad: "İSTANBUL", id: 9541, ...(n.ilce || {}) }, giris: { ...all, ...(n.giris || {}) }, once: { ...all, ...(n.once || {}) },
     dk: Math.max(1, Math.min(180, Number(n.dk) || 30)), atla: n.atla == null ? 1 : n.atla,
-    program: { on: 1, saat: "07:30", ...(n.program || {}) }, okuma: { on: 1, saat: "21:00", ...(n.okuma || {}) }
+    program: { on: 1, saat: "07:30", ...(n.program || {}) }, okuma: { on: 1, saat: "21:00", ...(n.okuma || {}) },
+    takvim: n.takvim ? 1 : 0
   };
 }
 const START = "2026-10-03";
@@ -93,13 +94,14 @@ function events(state, bil, vakit, now) {
       const start = at(D, T[sf], T.gmt);
       const end = ef === "imsak+1" ? (T1 ? at(addDays(D, 1), T1.imsak, T1.gmt) : null) : at(D, T[ef], T.gmt);
       const marked = n[k] === "k" || n[k] === "x";
+      if (N.takvim) continue;
       if (N.giris[k] && !marked) out.push({ key: `${D}:${k}:giris`, at: start, late: 20 * 60000, ttl: 1800, title: `${name} vakti girdi`, body: `${name} vakti ${T[sf]}${end ? ", çıkış " + hhmm(end) : ""}.`, tag: "vakit-" + k });
       if (end && N.once[k] && !(N.atla && n[k] === "k")) {
         out.push({ key: `${D}:${k}:once`, at: end - N.dk * 60000, late: N.dk * 60000, ttl: N.dk * 60, title: `${name} vakti çıkıyor`, body: `${name} vaktinin çıkmasına ${Math.max(1, Math.round((end - Math.max(now, end - N.dk * 60000)) / 60000))} dakika kaldı (${hhmm(end)}). Kıldıysanız uygulamada işaretleyin.`, tag: "vakit-" + k });
       }
     }
     const P = plan[D];
-    if (N.program.on && P && D >= START) {
+    if (N.program.on && P && D >= START && !N.takvim) {
       out.push({ key: `${D}:program`, at: at(D, N.program.saat), ttl: 6 * 3600, title: "Bugünkü okumalarım", body: [P.r && "Risale: " + P.r, P.qa && "Kur'an: " + P.qa, P.qm && "Meal: " + P.qm, "Sekine", P.c && "Cevşen: " + P.c].filter(Boolean).join(" · "), tag: "program" });
     }
     if (N.okuma.on && D >= START) {
@@ -110,6 +112,39 @@ function events(state, bil, vakit, now) {
   }
   if (bil?.test) out.push({ key: "test:" + bil.test, at: bil.test, ttl: 3600, title: "CENNET YOLU", body: "Deneme: zamanlayıcıdan gelen bildirim çalışıyor.", tag: "deneme", always: true });
   return out;
+}
+
+/* uçak modunda da çalışsın diye: iPhone takvimine abone olunan takvim (uyarılar telefonda kurulu kalır) */
+const icsText = t => String(t).replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\n/g, "\\n");
+const icsTime = ms => new Date(ms).toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+const fold = l => { const out = []; let cur = ""; for (const ch of l) { if (Buffer.byteLength(cur + ch) > 73) { out.push(cur); cur = " "; } cur += ch; } out.push(cur); return out.join("\r\n"); };
+function buildIcs(N, vakit, plan, now) {
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Cennet Yolu//TR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Cennet Yolu", "X-WR-TIMEZONE:Europe/Istanbul", "REFRESH-INTERVAL;VALUE=DURATION:PT6H", "X-PUBLISHED-TTL:PT6H"];
+  const stamp = icsTime(Date.UTC(2026, 9, 1));
+  const alarm = (trig, text) => ["BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsText(text), trig, "END:VALARM"];
+  const ev = (uid, s, e, sum, desc, alarms) => L.push("BEGIN:VEVENT", "UID:" + uid + "@cennetyolu", "DTSTAMP:" + stamp, "DTSTART:" + icsTime(s), "DTEND:" + icsTime(e), "SUMMARY:" + icsText(sum), "DESCRIPTION:" + icsText(desc), "TRANSP:TRANSPARENT", ...alarms.flat(), "END:VEVENT");
+  for (const D of Object.keys(vakit).sort()) {
+    if (D < addDays(isoTR(now), -1)) continue;
+    const T = vakit[D], T1 = vakit[addDays(D, 1)];
+    for (const [k, name, sf, ef] of VK) {
+      if (!N.giris[k] && !N.once[k]) continue;
+      const start = at(D, T[sf], T.gmt);
+      const end = ef === "imsak+1" ? (T1 ? at(addDays(D, 1), T1.imsak, T1.gmt) : start + 6 * 3600000) : at(D, T[ef], T.gmt);
+      const al = [];
+      if (N.giris[k]) al.push(alarm("TRIGGER;RELATED=START:PT0M", `${name} vakti girdi (${T[sf]})`));
+      if (N.once[k]) al.push(alarm(`TRIGGER;RELATED=END:-PT${N.dk}M`, `${name} vaktinin çıkmasına ${N.dk} dakika kaldı (${hhmm(end)})`));
+      ev(`${D}-${k}`, start, end, `${name} vakti`, `${name} ${T[sf]} – ${hhmm(end)} · ${N.ilce.ad}`, al);
+    }
+    if (D < START) continue;
+    const P = plan[D];
+    if (N.program.on) {
+      const s = at(D, N.program.saat);
+      const txt = P ? [P.r && "Risale: " + P.r, P.qa && "Kur'an: " + P.qa, P.qm && "Meal: " + P.qm, "Sekine", P.c && "Cevşen: " + P.c].filter(Boolean).join(" · ") : "Risale, Kur'an, meal, Sekine ve Cevşen";
+      ev(`${D}-program`, s, s + 15 * 60000, "Bugünkü okumalarım", txt, [alarm("TRIGGER;RELATED=START:PT0M", txt)]);
+    }
+  }
+  L.push("END:VCALENDAR");
+  return L.map(fold).join("\r\n") + "\r\n";
 }
 
 async function main() {
@@ -141,6 +176,11 @@ async function main() {
         catch (err) { log("gönderilemedi", s.ad, err.statusCode, err.body); if (err.statusCode === 404 || err.statusCode === 410) gon.gone.push(s.endpoint); }
       }
       gon.sent[e.key] = now; log("gönderildi", e.key, ok + "/" + subs.length, e.title, "-", e.body);
+    }
+    // takvim dosyası (yalnız değiştiyse yazılır)
+    if (N.takvim && gon.vakit?.days) {
+      const t = buildIcs(N, gon.vakit.days, bil?.plan || {}, now);
+      if (t !== (g.files["takvim.ics"]?.content || "")) { await gh("/gists/" + gid, { method: "PATCH", body: JSON.stringify({ files: { "takvim.ics": { content: t } } }) }); log("takvim güncellendi", (t.match(/BEGIN:VEVENT/g) || []).length, "olay"); }
     }
     // eski kayıtları temizle
     const cut = now - 3 * 86400000;
