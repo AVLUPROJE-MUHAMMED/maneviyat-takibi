@@ -1,0 +1,32 @@
+name: Bildirimler
+# Her 10 dakikada bir başlar, yaklaşık 10 dakika çalışır: Diyanet vakitlerine ve okuma programına göre telefona bildirim gönderir.
+on:
+  schedule:
+    - cron: "3,13,23,33,43,53 * * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: bildirim
+  cancel-in-progress: false
+jobs:
+  gonder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --prefix scripts --no-audit --no-fund --silent
+      - run: node scripts/bildirim.mjs
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+      # GitHub, 60 gün değişiklik olmayan depolarda zamanlayıcıyı durdurur; ayda bir küçük bir kayıt düşerek açık tutar
+      - name: Zamanlayıcıyı canlı tut
+        run: |
+          last=$(git log -1 --format=%ct); now=$(date +%s)
+          if [ $((now-last)) -gt 2592000 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+            date -u +%F > .canli && git add .canli && git commit -m "Zamanlayıcıyı canlı tut" && git push || true
+          fi

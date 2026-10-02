@@ -119,6 +119,11 @@ table.hist{border-collapse:separate;border-spacing:3px;font-size:.72rem;min-widt
 .legend{display:flex;gap:12px;font-size:.78rem;color:var(--muted);margin-top:6px;flex-wrap:wrap}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
 
+.vtime{display:block;font-family:var(--body);font-weight:500;font-size:.78rem;color:var(--muted)}
+.ntf{display:grid;grid-template-columns:auto auto 1fr 1fr;gap:6px 10px;align-items:center;font-size:.9rem}
+.ntf label{display:flex;gap:6px;align-items:center}
+.ntf input[type=checkbox],.chk input{width:auto}
+.chk{display:flex;gap:8px;align-items:center;font-size:.92rem}
 /* ayarlar */
 details.card summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:1.15rem;list-style:none}
 details.card summary::-webkit-details-marker{display:none}
@@ -148,7 +153,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
   <header class="top">
     <div class="toprow">
       <h1>Muhammed Maneviyat Takibi</h1>
-      <div class="sync" id="sync"><span class="dot" id="syncdot"></span><span id="synctext">Bu cihazda saklanıyor</span></div>
+      <div class="row" style="gap:10px"><div class="sync" id="sync"><span class="dot" id="syncdot"></span><span id="synctext">Bu cihazda saklanıyor</span></div><button class="iconbtn" id="opensettings" type="button" aria-label="Ayarlar">⚙ Ayarlar</button></div>
     </div>
     <div class="datenav">
       <button class="iconbtn" id="prev" aria-label="Önceki gün">◀</button>
@@ -208,7 +213,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar ve yedek</summary>
+    <summary>Ayarlar, bildirimler ve yedek</summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -269,6 +274,30 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       </div>
     </fieldset>
 
+    <fieldset id="ntfbox">
+      <legend>Bildirimler</legend>
+      <p class="small muted" style="margin:0">Namaz vakitleri Diyanet'in ilçe vakitlerinden alınır. Bildirimler uygulama kapalıyken de gelir; bunun için eşitlemenin açık olması gerekir.</p>
+      <p class="small" style="margin:0" id="ntfstate"></p>
+      <div class="row">
+        <button class="btn" id="ntfon" type="button">Bu cihazda bildirimleri aç</button>
+        <button class="btn ghost" id="ntftest" type="button" hidden>Deneme bildirimi</button>
+        <button class="btn danger" id="ntfoff" type="button" hidden>Bu cihazda kapat</button>
+      </div>
+      <div id="ntfsetup" class="warn" hidden><span>Bildirim gönderen zamanlayıcı henüz çalışmadı. Bir kez GitHub'da gizli anahtar eklenmesi gerekiyor: <a href="https://github.com/AVLUPROJE-MUHAMMED/maneviyat-takibi/settings/secrets/actions/new" target="_blank" rel="noopener">bu sayfada</a> Name kutusuna <b>GIST_TOKEN</b>, Secret kutusuna eşitlemede kullandığınız ghp_ ile başlayan anahtarı yazıp Add secret'a basın.</span></div>
+      <div class="fields">
+        <label class="f">İl<select id="n-il"></select></label>
+        <label class="f">İlçe<select id="n-ilce"></select></label>
+      </div>
+      <div class="ntf" id="n-vakit"></div>
+      <div class="fields">
+        <label class="f">Vakit çıkmadan kaç dakika önce<input id="n-dk" type="number" min="1" max="180" inputmode="numeric"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="n-atla"> "Kıldım" dediğim vakit için hatırlatma gönderme</label>
+      <div class="row"><label class="chk"><input type="checkbox" id="n-pon"> Günün okuma programı</label><input id="n-psaat" type="time" style="width:auto"></div>
+      <div class="row"><label class="chk"><input type="checkbox" id="n-oon"> Okumalarım bitmediyse hatırlat</label><input id="n-osaat" type="time" style="width:auto"></div>
+      <div class="row"><button class="btn" id="ntfsave" type="button">Bildirim ayarlarını kaydet</button><span class="small muted" id="ntfmsg"></span></div>
+    </fieldset>
+
     <fieldset>
       <legend>Yedek</legend>
       <p class="small muted" style="margin:0">Yedeği kopyalayıp bir yere saklayın. Geri yüklemek için yedek metnini kutuya yapıştırıp Geri yükle'ye basın.</p>
@@ -309,6 +338,10 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const $=id=>document.getElementById(id);
 
 const BOOKS=[["Asa-yı Musa",238],["Lem'alar",456],["Mektubat",507],["Sözler",765],["Şualar",656],["Mesnevi-i Nuriye",235],["Tarihçe-i Hayat",680],["Barla Lahikası",348],["Kastamonu Lahikası",218],["Emirdağ Lahikası",485],["Sikke-i Tasdik-i Gaybi",231],["İşaratü'l-İ'caz",255],["İman ve Küfür Muvazeneleri",215],["Muhakemat",165]];
+function defaultNotify(){
+  const all={sabah:1,ogle:1,ikindi:1,aksam:1,yatsi:1};
+  return {ilce:{il:"İSTANBUL",ad:"İSTANBUL",id:9541},giris:Object.assign({},all),once:Object.assign({},all),dk:30,atla:1,program:{on:1,saat:"07:30"},okuma:{on:1,saat:"21:00"}};
+}
 function defaults(){
   return {v:2,seed:0,settings:{
     startDate:"2026-10-03",
@@ -317,7 +350,9 @@ function defaults(){
     /* kaldığı yer: tablodaki ilk kırmızı Risale günü 1 Ağustos, Şualar 31. sayfa; ilk kırmızı Kur'an günü 5 Ağustos, 499. sayfa */
     risale:{books:BOOKS.map(([name,pages])=>({name,pages})),startBook:4,startPage:30,anchorDate:"2026-10-03",perDay:10},
     quran:{arStart:499,mealStart:499,anchorDate:"2026-10-03",perDay:2,endPage:600},
-    cevsen:{weekStart:6,plan:["Sureler kısmı","Cevşen","Evrad-ı Kudsiye","Delailü'n-Nur","İsm-i Azam ve Münacatü'l-Kur'an","Tahmidiye","Hülasatü'l-Hakaik ve Dua"]}
+    cevsen:{weekStart:6,plan:["Sureler kısmı","Cevşen","Evrad-ı Kudsiye","Delailü'n-Nur","İsm-i Azam ve Münacatü'l-Kur'an","Tahmidiye","Hülasatü'l-Hakaik ve Dua"]},
+    /* bildirimler: vakitler Diyanet ilçe numarasına göre (9541 = İstanbul) */
+    notify:defaultNotify()
   },days:{}};
 }
 function emptyDay(){return {n:{sabah:"",ogle:"",ikindi:"",aksam:"",yatsi:""},kz:{sabah:0,ogle:0,ikindi:0,aksam:0,yatsi:0,vitir:0},nk:{sabah:0,ogle:0,ikindi:0,aksam:0,yatsi:0,vitir:0},r:0,qa:0,qm:0,sk:0,c:0}}
@@ -336,8 +371,12 @@ function normalize(s){
     oldKaza:Object.assign({},d.settings.oldKaza,st.oldKaza||{}),
     risale:Object.assign({},d.settings.risale,st.risale||{}),
     quran:Object.assign({},d.settings.quran,st.quran||{}),
-    cevsen:Object.assign({},d.settings.cevsen,st.cevsen||{})
+    cevsen:Object.assign({},d.settings.cevsen,st.cevsen||{}),
+    notify:Object.assign({},d.settings.notify,st.notify||{})
   },days:{}};
+  const nt=out.settings.notify, dn=d.settings.notify;
+  for(const k of ["ilce","giris","once","program","okuma"]) nt[k]=Object.assign({},dn[k],(st.notify||{})[k]||{});
+  nt.dk=Math.max(1,Math.min(180,Number(nt.dk)||30));
   if(st.su) out.settings.su=Number(st.su)||0;
   const r=out.settings.risale;
   if(!Array.isArray(r.books)||!r.books.length) r.books=d.settings.risale.books;
@@ -376,13 +415,14 @@ const saveLocal=()=>{try{localStorage.setItem(LSKEY,JSON.stringify(S))}catch(e){
 saveLocal();
 
 let ref=null, docExists=false, pendingDays={}, pendingSettings=false, fullPending=false, timer=null, chain=Promise.resolve();
+let VT={}; try{VT=JSON.parse(localStorage.getItem("mt-vakit")||"{}").days||{}}catch(e){}
 function setSync(on,text){$("syncdot").classList.toggle("on",on);$("synctext").textContent=text}
 
 function queue(){ saveLocal(); if(!ref) return; clearTimeout(timer); timer=setTimeout(flush,500); }
 function markDay(date){ if(S.days[date]) S.days[date].u=Date.now(); pendingDays[date]=clone(S.days[date]); queue(); if(window.__mtChanged) window.__mtChanged(); }
 function markSettings(){ S.settings.su=Date.now(); pendingSettings=true; queue(); if(window.__mtChanged) window.__mtChanged(); }
 /* başka bir eşitleme katmanı (telefon uygulaması) için durum erişimi */
-window.__mt={get:()=>S,set:st=>{S=normalize(st);saveLocal();if(!$("settings").open)fillSettings();render();},normalize,setSync:(on,t)=>setSync(on,t)};
+window.__mt={saveSettings:fn=>{fn(S.settings);markSettings();render()},setVakit:v=>{VT=v||{};render()},get:()=>S,set:st=>{S=normalize(st);saveLocal();if(!$("settings").open)fillSettings();render();},normalize,setSync:(on,t)=>setSync(on,t)};
 function markFull(){ fullPending=true; queue(); }
 function flush(){
   if(!ref) return;
@@ -531,7 +571,7 @@ function render(){
   for(const [k,name] of VAKIT){
     const st=d.n[k];
     V.append(el("div",{class:"vrow"},
-      el("div",{class:"vname"},name),
+      el("div",{class:"vname"},name,VT[cur]?el("span",{class:"vtime num"},VT[cur][k==="sabah"?"imsak":k]||""):null),
       el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım"),
       el("button",{class:"seg x"+(st==="x"?(madeUpCur.has(cur+":"+k)?" on madeup":" on"):""),"aria-pressed":st==="x",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
       kazaBtn(d,k,name)
@@ -612,7 +652,7 @@ function risaleLabel(before,cnt){
   return a.book===b.book?B[a.book].name+" "+a.page+"–"+b.page:B[a.book].name+" "+a.page+"–"+B[a.book].pages+", "+B[b.book].name+" 1–"+b.page;
 }
 function renderHist(t){
-  const H=$("hist"); const made=madeUp();
+  const H=$("hist"); const made=madeUp(); const PLAN={};
   const R=S.settings.risale, Q=S.settings.quran, end=Number(Q.endPage)||600, plan=S.settings.cevsen.plan;
   const rPer=Number(R.perDay), qPer=Number(Q.perDay);
   const qpos=(start,n)=>((start-1+n)%end)+1;
@@ -660,8 +700,10 @@ function renderHist(t){
     h+=cell(status(v.sk>0),v.sk>0?"Okundu":future||isToday?"Sekine":before?"–":"Okunmadı");
     h+=cell(status(v.c>0),plan[cevIndex(dd)],true);
     h+="</tr>";
+    if(i>=0&&i<=14) PLAN[dd]={r:rAnch||v.r>0?risaleLabel(rb,rCnt):"",qa:qAnch||v.qa>0?qa1+"–"+qa2:"",qm:qAnch||v.qm>0?qm1+"–"+qm2:"",c:plan[cevIndex(dd)]};
   }
   H.innerHTML=h+"</tbody>";
+  window.__mtPlan=PLAN;
 }
 $("hist").addEventListener("click",e=>{
   const tr=e.target.closest("tr[data-d]"); if(!tr) return;
@@ -751,6 +793,7 @@ $("prev").addEventListener("click",()=>{if(cur<=PROGRAM_START)return;cur=addDays
 $("next").addEventListener("click",()=>{cur=addDays(cur,1);render()});
 $("today").addEventListener("click",()=>{cur=todayIso();render()});
 $("cevbtn").addEventListener("click",()=>toggleRead("c",1));
+$("opensettings").addEventListener("click",()=>{const d=$("settings");d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){render()}});
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
 
@@ -785,9 +828,8 @@ async function findGist(){
   }
   return null;
 }
-async function readRemote(){
-  const g=await gh("/gists/"+cfg.gistId);
-  const f=g.files&&g.files[FILE]; if(!f) return null;
+async function fileJSON(g,name){
+  const f=g&&g.files&&g.files[name]; if(!f) return null;
   let txt=f.content;
   if(f.truncated&&f.raw_url){ const r=await fetch(f.raw_url); txt=await r.text(); }
   try{return JSON.parse(txt)}catch(e){return null}
@@ -819,12 +861,14 @@ async function sync(){
       const g=await gh("/gists",{method:"POST",body:JSON.stringify({description:DESC,public:false,files:{[FILE]:{content:JSON.stringify(local)}}})});
       cfg.gistId=g.id; saveCfg();
     }else{
-      const remote=await readRemote();
+      const g=await gh("/gists/"+cfg.gistId);
+      const remote=await fileJSON(g,FILE);
       const merged=remote?merge(local,remote):local;
       const mergedTxt=JSON.stringify(merged);
       if(JSON.stringify(window.__mt.normalize(local))!==mergedTxt) window.__mt.set(merged);
       if(!remote||JSON.stringify(window.__mt.normalize(remote))!==mergedTxt)
         await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[FILE]:{content:mergedTxt}}})});
+      await notifySync(g);
     }
     cfg.last=Date.now(); saveCfg();
     status(true,"Cihazlar arasında eşitlendi "+hhmm());
@@ -836,6 +880,130 @@ async function sync(){
     if(again){again=false;setTimeout(sync,500)}
   }
 }
+/* ---------- bildirimler ----------
+   bildirim.json (uygulama yazar): vapid anahtarı, cihaz abonelikleri, önümüzdeki günlerin okuma programı, deneme isteği
+   gonderim.json (zamanlayıcı yazar): Diyanet vakitleri, gönderilenler, son çalışma */
+const BFILE="bildirim.json", GFILE="gonderim.json";
+const VK=[["sabah","Sabah","imsak"],["ogle","Öğle","ogle"],["ikindi","İkindi","ikindi"],["aksam","Akşam","aksam"],["yatsi","Yatsı","yatsi"]];
+let server=null; try{server=JSON.parse(localStorage.getItem("mt-vakit")||"null")}catch(e){}
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const unb64u=s=>{s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};
+async function genVapid(){
+  const k=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},true,["sign"]);
+  const pub=await crypto.subtle.exportKey("raw",k.publicKey), jwk=await crypto.subtle.exportKey("jwk",k.privateKey);
+  return {pub:b64u(pub),priv:jwk.d};
+}
+function deviceName(){const u=navigator.userAgent;return /iPad/.test(u)?"iPad":/iPhone/.test(u)?"iPhone":/Android/.test(u)?(/Mobile/.test(u)?"Android telefon":"Android tablet"):"Bilgisayar"}
+const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+async function notifySync(g){
+  const gon=await fileJSON(g,GFILE);
+  if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[]};
+    try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
+    window.__mt.setVakit&&window.__mt.setVakit(server.days); }
+  const bil=(await fileJSON(g,BFILE))||{}; const before=JSON.stringify(bil);
+  bil.subs=bil.subs||{};
+  const plan=window.__mtPlan||{}; if(Object.keys(plan).length) bil.plan=plan;
+  if(server&&server.gone) for(const [id,sb] of Object.entries(bil.subs)) if(server.gone.includes(sb.endpoint)) delete bil.subs[id];
+  if(cfg.push&&cfg.dev&&pushOK()){
+    try{const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription();
+      if(sub&&(!bil.subs[cfg.dev]||bil.subs[cfg.dev].endpoint!==sub.endpoint)) bil.subs[cfg.dev]=Object.assign(sub.toJSON(),{ad:deviceName(),t:Date.now()});
+    }catch(e){}
+  }
+  if(JSON.stringify(bil)!==before) await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[BFILE]:{content:JSON.stringify(bil)}}})});
+  renderNotify(false);
+}
+async function editBil(fn){
+  if(!cfg.gistId) await sync();
+  const g=await gh("/gists/"+cfg.gistId); const bil=(await fileJSON(g,BFILE))||{}; bil.subs=bil.subs||{};
+  await fn(bil);
+  await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[BFILE]:{content:JSON.stringify(bil)}}})});
+}
+const nmsg=t=>{$("ntfmsg").textContent=t};
+async function pushOn(){
+  if(!cfg.token){ nmsg("Önce yukarıdaki eşitlemeyi açın; bildirimler oradaki gizli not üzerinden çalışır."); return; }
+  if(!pushOK()){ nmsg(/iPhone|iPad/.test(navigator.userAgent)?"iPhone'da bildirim için uygulamayı Safari'den ana ekrana ekleyip ana ekrandaki simgeden açın (iOS 16.4 ve üstü).":"Bu tarayıcı bildirim desteklemiyor."); return; }
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted"){ nmsg("Bildirim izni verilmedi. Telefonun ayarlarından bu uygulamaya bildirim izni verin."); return; }
+  nmsg("Açılıyor…");
+  try{
+    await editBil(async bil=>{
+      if(!bil.vapid) bil.vapid=await genVapid();
+      const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,no)=>setTimeout(()=>no(new Error("uygulama hazır değil, sayfayı yenileyip tekrar deneyin")),10000))]);
+      let sub=await reg.pushManager.getSubscription();
+      if(sub&&b64u(sub.options&&sub.options.applicationServerKey||new ArrayBuffer(0))!==bil.vapid.pub){ await sub.unsubscribe(); sub=null; }
+      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:unb64u(bil.vapid.pub)});
+      cfg.dev=cfg.dev||Math.random().toString(36).slice(2,10);
+      bil.subs[cfg.dev]=Object.assign(sub.toJSON(),{ad:deviceName(),t:Date.now()});
+      const plan=window.__mtPlan||{}; if(Object.keys(plan).length) bil.plan=plan;
+    });
+    cfg.push=true; saveCfg(); nmsg("Bildirimler bu cihazda açık.");
+  }catch(e){ nmsg("Açılamadı: "+(e&&e.message||e&&e.code||"bilinmeyen hata")); }
+  renderNotify(false);
+}
+async function pushOff(){
+  try{
+    const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription(); if(sub) await sub.unsubscribe();
+    if(cfg.token&&cfg.dev) await editBil(bil=>{delete bil.subs[cfg.dev]});
+  }catch(e){}
+  cfg.push=false; saveCfg(); nmsg("Bu cihazda bildirimler kapatıldı."); renderNotify(false);
+}
+async function pushTest(){
+  try{const reg=await navigator.serviceWorker.ready; await reg.showNotification("Muhammed Maneviyat Takibi",{body:"Deneme: bildirimler bu cihazda görünüyor.",icon:"icon-192.png",badge:"icon-192.png",tag:"deneme"});}catch(e){}
+  try{await editBil(bil=>{bil.test=Date.now()}); nmsg("Telefondaki deneme hemen göründü. Zamanlayıcıdan gelen deneme birkaç dakika içinde gelir.");}
+  catch(e){ nmsg("Deneme isteği gönderilemedi."); }
+}
+let ILCE=null;
+async function loadIlce(){ if(ILCE) return ILCE; try{ILCE=await (await fetch("ilceler.json")).json()}catch(e){ILCE=[]} return ILCE; }
+function fillIlce(il,sel){
+  const S=$("n-ilce"); S.replaceChildren(); const row=(ILCE||[]).find(x=>x[0]===il);
+  for(const [ad,id] of (row?row[1]:[])){const o=document.createElement("option");o.value=String(id);o.textContent=ad;S.append(o)}
+  const c=row&&(row[1].find(x=>String(x[1])===String(sel))||row[1].find(x=>x[0]===il)); if(c) S.value=String(c[1]);
+}
+async function renderNotify(form){
+  const st=$("ntfstate"), on=!!cfg.push&&pushOK()&&Notification.permission==="granted";
+  $("ntfon").hidden=on; $("ntftest").hidden=!on; $("ntfoff").hidden=!on;
+  const ago=server&&server.last?Math.round((Date.now()-server.last)/60000):null;
+  st.textContent=(on?"Bu cihazda bildirimler açık.":"Bu cihazda bildirimler kapalı.")+
+    (ago==null?"":" Zamanlayıcı en son "+(ago<1?"az önce":ago<120?ago+" dakika önce":Math.round(ago/60)+" saat önce")+" çalıştı.")+
+    (server&&server.error?" Son hata: "+server.error:"");
+  $("ntfsetup").hidden=!(cfg.token&&(!server||!server.last));
+  if(!form) return;
+  const N=window.__mt.get().settings.notify;
+  await loadIlce();
+  const IL=$("n-il"); if(!IL.options.length) for(const [il] of ILCE){const o=document.createElement("option");o.value=il;o.textContent=il;IL.append(o)}
+  IL.value=N.ilce.il; fillIlce(N.ilce.il,N.ilce.id);
+  const V=$("n-vakit"); V.replaceChildren();
+  const td=new Date(); const key=td.getFullYear()+"-"+String(td.getMonth()+1).padStart(2,"0")+"-"+String(td.getDate()).padStart(2,"0");
+  const T=server&&server.days&&server.days[key]||{};
+  for(const [k,name,f] of VK){
+    const n=document.createElement("b"); n.textContent=name;
+    const t=document.createElement("span"); t.className="small muted num"; t.textContent=T[f]||"";
+    const mk=(grp,label)=>{const l=document.createElement("label");const c=document.createElement("input");c.type="checkbox";c.id="n-"+grp+"-"+k;c.checked=!!N[grp][k];l.append(c,label);return l};
+    V.append(n,t,mk("giris","Vakit girince"),mk("once","Çıkmadan önce"));
+  }
+  $("n-dk").value=N.dk; $("n-atla").checked=!!N.atla;
+  $("n-pon").checked=!!N.program.on; $("n-psaat").value=N.program.saat;
+  $("n-oon").checked=!!N.okuma.on; $("n-osaat").value=N.okuma.saat;
+}
+$("n-il").addEventListener("change",()=>fillIlce($("n-il").value));
+$("ntfsave").addEventListener("click",()=>{
+  window.__mt.saveSettings(s=>{
+    const N=s.notify; const ilS=$("n-ilce");
+    if(ilS.value) N.ilce={il:$("n-il").value,ad:ilS.options[ilS.selectedIndex].textContent,id:Number(ilS.value)};
+    for(const [k] of VK){N.giris[k]=$("n-giris-"+k).checked?1:0;N.once[k]=$("n-once-"+k).checked?1:0}
+    N.dk=Math.max(1,Math.min(180,parseInt($("n-dk").value,10)||30)); N.atla=$("n-atla").checked?1:0;
+    const hm=v=>/^\d\d:\d\d$/.test(v)?v:null;
+    N.program={on:$("n-pon").checked?1:0,saat:hm($("n-psaat").value)||N.program.saat};
+    N.okuma={on:$("n-oon").checked?1:0,saat:hm($("n-osaat").value)||N.okuma.saat};
+  });
+  nmsg(cfg.token?"Kaydedildi; zamanlayıcı birkaç dakika içinde yeni ayarlarla çalışır.":"Kaydedildi. Bildirimlerin gelmesi için eşitlemeyi açın.");
+});
+$("ntfon").addEventListener("click",pushOn);
+$("ntfoff").addEventListener("click",pushOff);
+$("ntftest").addEventListener("click",pushTest);
+$("settings").addEventListener("toggle",()=>{if($("settings").open) renderNotify(true)});
+renderNotify(true);
+
 window.__mtChanged=()=>{ if(!cfg.token) return; clearTimeout(timer); timer=setTimeout(sync,2000); };
 
 function renderPanel(){
