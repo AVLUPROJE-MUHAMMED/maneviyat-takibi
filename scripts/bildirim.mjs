@@ -182,10 +182,10 @@ async function sendMail(g, now, tur) {
   const d = isoTR(now), ay = AYLAR[Number(d.slice(5, 7)) - 1] + " " + d.slice(0, 4);
   const att = [{ filename: `cennet-yolu-plan-${d}.xlsx`, content: Buffer.from(b64, "base64"), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }];
   if (state) att.push({ filename: `cennet-yolu-kayitlar-${d}.json`, content: JSON.stringify({ uygulama: "CENNET YOLU", tarih: new Date(now).toISOString(), veri: state }), contentType: "application/json" });
-  if (tur === "tam") att.push({ filename: `cennet-yolu-program-${d}.zip`, content: programZip(), contentType: "application/zip" });
-  const konu = tur === "tam" ? `CENNET YOLU · Tam yedek (${d.split("-").reverse().join(".")})` : `CENNET YOLU · Yıllık plan yedeği (${ay})${tur === "deneme" ? " · deneme" : ""}`;
-  const metin = tur === "tam"
-    ? "Esselâmü aleyküm,\n\nCENNET YOLU'nun tam yedeği ektedir:\n• cennet-yolu-plan: yıllık plan (Excel)\n• cennet-yolu-kayitlar: bütün kayıtlarınız ve ayarlarınız; uygulamada Ayarlar > Yedek > Dosyadan yükle ile geri yüklenir\n• cennet-yolu-program: programın kendisi; geri kurma adımları içindeki GERI-YUKLEME.txt dosyasında\n\nBu e-postayı silmeden saklayın.\n"
+  if (tur !== "deneme") att.push({ filename: `cennet-yolu-program-${d}.zip`, content: programZip(), contentType: "application/zip" });
+  const konu = tur === "tam" ? `CENNET YOLU · Tam yedek (${d.split("-").reverse().join(".")})` : tur === "aylik" ? `CENNET YOLU · Aylık tam yedek (${ay})` : `CENNET YOLU · Yıllık plan yedeği (${ay}) · deneme`;
+  const metin = tur !== "deneme"
+    ? "Esselâmü aleyküm,\n\nCENNET YOLU'nun tam yedeği ektedir:\n• cennet-yolu-plan: yıllık plan (Excel)\n• cennet-yolu-kayitlar: bütün kayıtlarınız ve ayarlarınız; uygulamada Ayarlar > Yedek > Dosyadan yükle ile geri yüklenir\n• cennet-yolu-program: programın kendisi; geri kurma adımları içindeki GERI-YUKLEME.txt dosyasında\n\nBu e-postayı silmeden saklayın." + (tur === "aylik" ? " Bu e-posta her ay kendiliğinden gönderilir; kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Bildirimler bölümüne bakın." : "") + "\n"
     : "Esselâmü aleyküm,\n\nYıllık planınızın Excel dosyası ve kayıtlarınızın yedeği ektedir. Dosyalar, uygulamanın en son internete bağlandığı güne göredir.\n\nBu e-posta CENNET YOLU uygulamasından her ay kendiliğinden gönderilir. Kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Bildirimler bölümüne bakın.\n";
   const tr = nodemailer.createTransport({ service: "gmail", auth: { user: MAIL_USER, pass: MAIL_PASS }, connectionTimeout: 20000, greetingTimeout: 15000, socketTimeout: 30000 });
   await tr.sendMail({ from: `"CENNET YOLU" <${MAIL_USER}>`, to: MAIL_USER, subject: konu, text: metin, attachments: att });

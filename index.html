@@ -1101,7 +1101,7 @@ function renderYedek(){
   if(!Y.on){ B.textContent="Aylık yedek kapalı. Yıllık planı istediğiniz zaman tablonun altındaki Excel indir düğmesiyle kaydedebilirsiniz."; $("n-ydene").hidden=true; return; }
   $("n-ydene").hidden=!(M&&M.kurulu);
   if(M&&M.kurulu){
-    B.textContent=when+" yıllık planın Excel dosyası "+(M.to||"e-postanıza")+" adresine gönderilir, telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
+    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir. Deneme düğmesi yalnız Excel'i gönderir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
   }else{
     B.innerHTML=when+" uygulamanın üstünde <b>Excel'i paylaş</b> düğmesi çıkar ve telefonunuza bildirim gelir; paylaş menüsünden Gmail'i seçebilirsiniz. "+
       "Dosyanın e-postanıza <b>kendiliğinden</b> gitmesi için bir kez kurulum gerekir: "+
