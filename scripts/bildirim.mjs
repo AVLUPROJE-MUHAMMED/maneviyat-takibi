@@ -13,6 +13,7 @@ const APP = "https://avluproje-muhammed.github.io/maneviyat-takibi/";
 const UA = { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36" };
 const VK = [["sabah", "Sabah", "imsak", "gunes"], ["ogle", "Öğle", "ogle", "ikindi"], ["ikindi", "İkindi", "ikindi", "aksam"], ["aksam", "Akşam", "aksam", "yatsi"], ["yatsi", "Yatsı", "yatsi", "imsak+1"]];
 const T0 = Date.now();
+const ORNEK = process.env.ORNEK || ""; let ornekGitti = false;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
@@ -194,6 +195,19 @@ async function main() {
       }
       log("gönderildi", e.key, ok + "/" + subs.length, e.title, "-", e.body);
     };
+    // elle başlatılan çalışmada örnek bildirimler (bildirimlerin nasıl göründüğünü denemek için)
+    if (ORNEK && !ornekGitti && subs.length && vapidSet) {
+      ornekGitti = true;
+      const D = isoTR(now) < START ? START : isoTR(now), P = bil?.plan?.[D] || {};
+      const oku = [P.r && "Risale (" + P.r + ")", P.qa && "Kur'an (" + P.qa + ")", P.qm && "Meal (" + P.qm + ")", "Sekine", P.c && "Cevşen (" + P.c + ")"].filter(Boolean);
+      const T = gon.vakit.days[isoTR(now)] || {};
+      const ornek = {
+        program: { title: "Bugünkü okumaların", body: oku.join(" · ") },
+        okuma: { title: "Okumalarını yaptın mı?", body: "Henüz işaretlenmeyen: " + oku.join(" · ") },
+        vakit: { title: "Öğle namazını kıldın mı?", body: `Öğle vaktinin çıkmasına 30 dakika kaldı (${T.ikindi || "15:30"}). Kıldıysan uygulamada "Kıldım"a dokun.` }
+      };
+      for (const k of ORNEK.split(",").map(x => x.trim()).filter(x => ornek[x])) { await push({ key: "ornek:" + k, ttl: 3600, tag: "ornek-" + k, ...ornek[k] }); await sleep(4000); }
+    }
     const due = events(state, bil, gon.vakit.days, now).filter(e => !gon.sent[e.key] && e.at <= now && e.at > now - (e.late || LATE));
     for (const e of due) {
       if (!subs.length || !vapidSet) continue; // henüz kayıtlı cihaz yok; süresi içinde kayıt olursa yine gönderilir

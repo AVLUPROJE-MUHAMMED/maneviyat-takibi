@@ -8,6 +8,9 @@ on:
       sure:
         description: Kaç dakika çalışsın
         default: "28"
+      ornek:
+        description: "Örnek bildirim gönder (okuma, program, vakit; virgülle)"
+        default: ""
 permissions:
   contents: write
 concurrency:
@@ -28,6 +31,7 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
           LIFE_MIN: ${{ inputs.sure || '28' }}
+          ORNEK: ${{ inputs.ornek || '' }}
       # GitHub, 60 gün değişiklik olmayan depolarda zamanlayıcıyı durdurur; ayda bir küçük bir kayıt düşerek açık tutar
       - name: Zamanlayıcıyı canlı tut
         run: |
