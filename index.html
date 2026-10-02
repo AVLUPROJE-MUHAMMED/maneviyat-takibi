@@ -949,7 +949,7 @@ let busy=false, again=false, timer=null;
 function status(on,text){ if(window.__mt) window.__mt.setSync(on,text); }
 function hhmm(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
 async function gh(path,opts={}){
-  const res=await fetch(API+path,Object.assign({},opts,{headers:{"Authorization":"Bearer "+cfg.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"}}));
+  const res=await fetch(API+path,Object.assign({cache:"no-store"},opts,{headers:{"Authorization":"Bearer "+cfg.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"}}));
   if(res.status===401) throw {code:"auth"};
   if(!res.ok) throw {code:"http",status:res.status};
   return res.json();
