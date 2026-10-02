@@ -1,5 +1,5 @@
 name: Bildirimler
-# Her 10 dakikada bir başlar, yaklaşık 10 dakika çalışır: Diyanet vakitlerine ve okuma programına göre telefona bildirim gönderir.
+# Her 10 dakikada bir başlar, yaklaşık 28 dakika çalışır (GitHub gecikmelerinde boşluk kalmasın diye sıradaki bekler): Diyanet vakitlerine ve okuma programına göre telefona bildirim gönderir.
 on:
   schedule:
     - cron: "3,13,23,33,43,53 * * * *"
@@ -12,7 +12,7 @@ concurrency:
 jobs:
   gonder:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

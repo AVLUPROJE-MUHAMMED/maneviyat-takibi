@@ -4,7 +4,7 @@
 import webpush from "web-push";
 
 const TOKEN = process.env.GIST_TOKEN;
-const LIFE = Number(process.env.LIFE_MIN || 9.5) * 60000;   // bir çalışmanın süresi; zamanlayıcı her 10 dakikada başlar
+const LIFE = Number(process.env.LIFE_MIN || 28) * 60000;    // bir çalışmanın süresi; GitHub zamanlayıcısı gecikebildiği için çalışmalar üst üste biner (sırayla)
 const LATE = 2 * 3600000;                                   // geciken çalışmada okuma bildirimleri bu kadar geç de gönderilir (vakitlerde daha kısa)
 const DESC = "muhammed-maneviyat-takibi", FILE = "maneviyat.json", BFILE = "bildirim.json", GFILE = "gonderim.json";
 const APP = "https://avluproje-muhammed.github.io/maneviyat-takibi/";
