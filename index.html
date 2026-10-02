@@ -328,7 +328,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
         <label class="f">Saat<input id="n-ysaat" type="time"></label>
       </div>
       <div id="n-yedekbox" class="small muted"></div>
-      <div class="row"><button class="btn" id="n-ysave" type="button">Aylık yedek ayarını kaydet</button><button class="btn ghost" id="n-ydene" type="button">E-postama şimdi gönder (deneme)</button></div>
+      <div class="row"><button class="btn" id="n-ysave" type="button">Aylık yedek ayarını kaydet</button></div>
       <p class="small muted" id="n-ymsg" style="margin:0"></p>
     </fieldset>
   </details>
@@ -1100,10 +1100,9 @@ const tarihTR=ms=>new Date(ms).toLocaleString("tr-TR",{day:"numeric",month:"long
 function renderYedek(){
   const Y=window.__mt.get().settings.notify.yedek, B=$("n-yedekbox"), M=server&&server.mail;
   const when="Her ayın "+Y.gun+". günü "+Y.saat+"'te";
-  if(!Y.on){ B.textContent="Aylık yedek kapalı. Yıllık planı istediğiniz zaman tablonun altındaki Excel indir düğmesiyle kaydedebilirsiniz."; $("n-ydene").hidden=true; return; }
-  $("n-ydene").hidden=!(M&&M.kurulu);
+  if(!Y.on){ B.textContent="Aylık yedek kapalı. İstediğiniz zaman yukarıdaki Yedeği e-postama gönder düğmesini kullanabilirsiniz."; return; }
   if(M&&M.kurulu){
-    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir. Deneme düğmesi yalnız Excel'i gönderir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
+    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
   }else{
     B.innerHTML=when+" uygulamanın üstünde <b>Excel'i paylaş</b> düğmesi çıkar ve telefonunuza bildirim gelir; paylaş menüsünden Gmail'i seçebilirsiniz. "+
       "Dosyanın e-postanıza <b>kendiliğinden</b> gitmesi için bir kez kurulum gerekir: "+
@@ -1265,13 +1264,6 @@ $("mailbtn").addEventListener("click",async()=>{
 $("n-ysave").addEventListener("click",()=>{
   window.__mt.saveSettings(s=>{const Y=s.notify.yedek; Y.on=$("n-yon").checked?1:0; Y.gun=Math.max(1,Math.min(28,parseInt($("n-ygun").value,10)||1)); if(/^\d\d:\d\d$/.test($("n-ysaat").value)) Y.saat=$("n-ysaat").value;});
   renderYedek(); $("n-ymsg").textContent=cfg.token?"Kaydedildi.":"Kaydedildi. E-posta ve bildirim için eşitlemeyi açın.";
-});
-$("n-ydene").addEventListener("click",async()=>{
-  if(!cfg.token){ ymsg("Önce eşitlemeyi açın."); return; }
-  if(!navigator.onLine){ ymsg("İnternet yok."); return; }
-  ymsg("Excel hazırlanıyor…");
-  try{ await upXlsx(true); await editBil(bil=>{bil.yedekTest=Date.now()}); nmsg("Gönderildi; birkaç dakika içinde e-postanıza gelir."); }
-  catch(e){ nmsg("Gönderilemedi, internet bağlantısını kontrol edin."); }
 });
 $("settings").addEventListener("toggle",()=>{if($("settings").open) renderNotify(true)});
 renderNotify(true);
