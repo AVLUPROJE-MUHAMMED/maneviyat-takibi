@@ -211,6 +211,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
   <section class="card" style="margin-top:14px" aria-labelledby="h-hist">
     <div class="cardhead"><h2 id="h-hist">Bir yıllık plan</h2><span class="small muted">3 Ekim'den itibaren · yukarı aşağı ve yana kaydırabilirsiniz</span></div>
         <div class="histwrap" id="histwrap"><table class="hist" id="hist"></table></div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="xlsbtn" type="button">Excel indir</button><button class="btn ghost" id="pdfbtn" type="button">PDF indir</button></div>
     <div class="legend"><span><i style="background:var(--ok)"></i>Kılındı / okundu</span><span><i style="background:var(--late)"></i>Kaza edildi</span><span><i style="background:var(--no)"></i>Kılınmadı / okunmadı</span><span><i style="background:var(--idle)"></i>İleri tarih: plan</span></div>
   </section>
 
@@ -766,6 +767,107 @@ $("setform").addEventListener("submit",e=>{
   if(/^\d{4}-\d{2}-\d{2}$/.test($("s-start").value)) s.startDate=$("s-start").value;
   markSettings(); render(); toast("Ayarlar kaydedildi");
 });
+
+/* ---------- bir yıllık planı Excel ve PDF olarak indir (internetsiz çalışır) ---------- */
+function tableData(){
+  const H=$("hist"); const head=[...H.querySelectorAll("thead th")].map(th=>th.textContent);
+  const rows=[...H.querySelectorAll("tbody tr[data-d]")].map(tr=>{
+    const d=tr.dataset.d, dt=parse(d);
+    const cells=[...tr.children].slice(1).map(td=>({t:td.textContent,c:(td.className.match(/\b(ok|no|late|plan|na)\b/)||[])[1]||"na"}));
+    return {d,label:pad(dt.getDate())+"."+pad(dt.getMonth()+1)+"."+dt.getFullYear()+" "+GUNK[dt.getDay()],cells};
+  });
+  return {head,rows};
+}
+async function deliver(name,blob,type){
+  const file=new File([blob],name,{type});
+  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+}
+/* küçük zip yazıcı (sıkıştırmasız) */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
+function zip(files){
+  const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+  const u16=n=>[n&255,(n>>8)&255], u32=n=>[n&255,(n>>8)&255,(n>>16)&255,(n>>>24)&255];
+  for(const [name,text] of files){
+    const nb=enc.encode(name), data=enc.encode(text), crc=crc32(data);
+    const loc=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0)]);
+    parts.push(loc,nb,data);
+    cen.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=loc.length+nb.length+data.length;
+  }
+  const cenLen=cen.reduce((a,b)=>a+b.length,0);
+  return new Blob([...parts,...cen,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cenLen),...u32(off),...u16(0)])]);
+}
+const xesc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function buildXlsx(){
+  const {head,rows}=tableData();
+  const ST={ok:2,late:3,no:4,plan:5,na:1};
+  const col=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+  const cell=(r,c,t,s)=>`<c r="${col(c)}${r}" t="inlineStr" s="${s}"><is><t>${xesc(t)}</t></is></c>`;
+  let x=`<row r="1">${cell(1,0,"CENNET YOLU · Bir yıllık plan",7)}</row><row r="2">${head.map((h,i)=>cell(2,i,i?h:"Tarih",6)).join("")}</row>`;
+  rows.forEach((r,i)=>{const n=i+3; x+=`<row r="${n}">${cell(n,0,r.label,8)}${r.cells.map((c,j)=>cell(n,j+1,c.t,ST[c.c])).join("")}</row>`});
+  const widths=head.map((h,i)=>i===0?16:/Risale|Cevşen/.test(h)?30:/Kaza/.test(h)?13:11);
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="2" topLeftCell="B3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData>${x}</sheetData></worksheet>`;
+  const fill=c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`;
+  const bd='<border><left style="thin"><color rgb="FFFFFFFF"/></left><right style="thin"><color rgb="FFFFFFFF"/></right><top style="thin"><color rgb="FFFFFFFF"/></top><bottom style="thin"><color rgb="FFFFFFFF"/></bottom><diagonal/></border>';
+  const xf=(f,fi,al)=>`<xf numFmtId="0" fontId="${f}" fillId="${fi}" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="${al||"center"}" vertical="center" wrapText="1"/></xf>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="14"/><color rgb="FF1F4F7A"/><name val="Calibri"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fill("23804F")}${fill("D9A31C")}${fill("B83A32")}${fill("E4E9EC")}${fill("1F4F7A")}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>${bd}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="9"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>${xf(0,0)}${xf(1,2)}${xf(2,3)}${xf(1,4)}${xf(0,5)}${xf(1,6)}${xf(3,0,"left")}${xf(2,0,"left")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files=[
+    ["[Content_Types].xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+    ["_rels/.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ["xl/workbook.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Bir yıllık plan" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ["xl/_rels/workbook.xml.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ["xl/styles.xml",styles],["xl/worksheets/sheet1.xml",sheet]];
+  return zip(files);
+}
+/* PDF: tablo sayfa sayfa tuvale çizilir, sayfalar JPEG olarak PDF'e konur (Türkçe harfler sorunsuz) */
+async function buildPdf(){
+  const {head,rows}=tableData();
+  const W=1684,Hh=1190,M=40,RH=34,HEAD=44,TOP=96, per=Math.floor((Hh-TOP-HEAD-M)/RH);
+  const wts=head.map((h,i)=>i===0?1.5:/Risale|Cevşen/.test(h)?2.3:/Kaza/.test(h)?1.25:0.95);
+  const sum=wts.reduce((a,b)=>a+b,0), cw=wts.map(w=>w/sum*(W-2*M));
+  const COL={ok:["#23804f","#fff"],late:["#d9a31c","#fff"],no:["#b83a32","#fff"],plan:["#e4e9ec","#18262f"],na:["#f3f5f6","#5b6b75"]};
+  const pages=Math.ceil(rows.length/per), imgs=[];
+  const fit=(ctx,t,w)=>{if(ctx.measureText(t).width<=w)return t;while(t.length>1&&ctx.measureText(t+"…").width>w)t=t.slice(0,-1);return t+"…"};
+  for(let p=0;p<pages;p++){
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=Hh; const ctx=cv.getContext("2d");
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,Hh);
+    ctx.fillStyle="#1f4f7a"; ctx.font="bold 34px Georgia, serif"; ctx.textBaseline="middle"; ctx.fillText("CENNET YOLU · Bir yıllık plan",M,M+12);
+    ctx.fillStyle="#5b6b75"; ctx.font="20px system-ui, sans-serif"; ctx.textAlign="right"; ctx.fillText("Sayfa "+(p+1)+" / "+pages+" · "+new Date().toLocaleDateString("tr-TR"),W-M,M+12); ctx.textAlign="left";
+    let x=M; ctx.font="bold 19px system-ui, sans-serif";
+    head.forEach((h,i)=>{ctx.fillStyle="#1f4f7a";ctx.fillRect(x+2,TOP,cw[i]-4,HEAD-4);ctx.fillStyle="#fff";ctx.textAlign="center";ctx.fillText(fit(ctx,i?h:"Tarih",cw[i]-10),x+cw[i]/2,TOP+HEAD/2-2);x+=cw[i]});
+    rows.slice(p*per,(p+1)*per).forEach((r,ri)=>{
+      const y=TOP+HEAD+ri*RH; x=M;
+      ctx.textAlign="left"; ctx.fillStyle="#18262f"; ctx.font="18px system-ui, sans-serif"; ctx.fillText(r.label,x+6,y+RH/2); x+=cw[0];
+      r.cells.forEach((c,ci)=>{const [bg,fg]=COL[c.c]||COL.na;const w=cw[ci+1];ctx.fillStyle=bg;ctx.beginPath();(ctx.roundRect?ctx.roundRect(x+2,y+2,w-4,RH-4,6):ctx.rect(x+2,y+2,w-4,RH-4));ctx.fill();
+        ctx.fillStyle=fg;ctx.textAlign="center";ctx.font=(c.c==="ok"||c.c==="no"||c.c==="late"?"bold ":"")+"16px system-ui, sans-serif";ctx.fillText(fit(ctx,c.t,w-10),x+w/2,y+RH/2);x+=w});
+    });
+    const blob=await new Promise(ok=>cv.toBlob(ok,"image/jpeg",0.8));
+    imgs.push(new Uint8Array(await blob.arrayBuffer()));
+  }
+  // en basit PDF: her sayfada tam sayfa bir resim (A4 yatay)
+  const enc=new TextEncoder(), chunks=[], offs=[]; let len=0;
+  const push=b=>{const u=typeof b==="string"?enc.encode(b):b;chunks.push(u);len+=u.length};
+  const obj=(n,body)=>{offs[n]=len;push(n+" 0 obj\n");body.forEach(push);push("\nendobj\n")};
+  push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+  const N=imgs.length, kids=[];
+  for(let i=0;i<N;i++) kids.push((3+i*3)+" 0 R");
+  obj(1,["<< /Type /Catalog /Pages 2 0 R >>"]);
+  obj(2,["<< /Type /Pages /Kids ["+kids.join(" ")+"] /Count "+N+" >>"]);
+  imgs.forEach((im,i)=>{const pn=3+i*3, cn=pn+1, xn=pn+2, cs="q 842 0 0 595 0 0 cm /Im0 Do Q";
+    obj(pn,["<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /XObject << /Im0 "+xn+" 0 R >> >> /Contents "+cn+" 0 R >>"]);
+    obj(cn,["<< /Length "+cs.length+" >>\nstream\n"+cs+"\nendstream"]);
+    obj(xn,["<< /Type /XObject /Subtype /Image /Width "+W+" /Height "+Hh+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+im.length+" >>\nstream\n",im,"\nendstream"]);
+  });
+  const total=3+N*3, xref=len;
+  let x="xref\n0 "+total+"\n0000000000 65535 f \n"; for(let i=1;i<total;i++) x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
+  push(x+"trailer\n<< /Size "+total+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF\n");
+  return new Blob(chunks,{type:"application/pdf"});
+}
+$("xlsbtn").addEventListener("click",async()=>{try{await deliver("cennet-yolu-plan-"+todayIso()+".xlsx",buildXlsx(),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}catch(e){toast("Excel hazırlanamadı")}});
+$("pdfbtn").addEventListener("click",async()=>{const b=$("pdfbtn");b.disabled=true;b.textContent="PDF hazırlanıyor…";try{await deliver("cennet-yolu-plan-"+todayIso()+".pdf",await buildPdf(),"application/pdf")}catch(e){toast("PDF hazırlanamadı")}finally{b.disabled=false;b.textContent="PDF indir"}});
 
 /* ---------- yedek ---------- */
 const backupText=()=>JSON.stringify({uygulama:"CENNET YOLU",tarih:new Date().toISOString(),veri:S});
