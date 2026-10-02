@@ -319,8 +319,10 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <div class="row">
         <button class="btn ghost" id="exportbtn" type="button">Yedeği kopyala</button>
         <button class="btn ghost" id="savebtn" type="button" hidden>Dosya olarak indir</button>
+        <button class="btn" id="mailbtn" type="button">Yedeği e-postama gönder</button>
         <label class="btn ghost" style="cursor:pointer">Dosyadan yükle<input type="file" id="importfile" accept=".json,application/json,text/plain" hidden></label>
       </div>
+      <p class="small muted" id="mailmsg" style="margin:0"></p>
       <textarea id="backup" placeholder="Yedek metni burada görünür ya da buraya yapıştırılır"></textarea>
       <div class="row">
         <button class="btn danger" id="importbtn" type="button">Geri yükle</button>
@@ -1248,6 +1250,17 @@ $("ntfsave").addEventListener("click",()=>{
 $("ntfon").addEventListener("click",pushOn);
 $("ntfoff").addEventListener("click",pushOff);
 $("ntftest").addEventListener("click",pushTest);
+/* tam yedek: kayıtlar, yıllık plan Excel'i ve programın kendisi tek e-postayla gelir (zamanlayıcı gönderir) */
+$("mailbtn").addEventListener("click",async()=>{
+  const m=t=>{$("mailmsg").textContent=t};
+  if(!cfg.token){ m("Bunun için önce Ayarlar'da eşitlemeyi açın."); return; }
+  if(!navigator.onLine){ m("İnternet yok; bağlanınca yeniden deneyin."); return; }
+  if(server&&server.mail&&!server.mail.kurulu){ m("E-posta kurulmamış; Bildirimler bölümündeki Aylık yedek açıklamasındaki adımları yapın."); return; }
+  const b=$("mailbtn"); b.disabled=true; m("Yedek hazırlanıyor…");
+  try{ await sync(); await upXlsx(true); await editBil(bil=>{bil.yedekMail=Date.now()}); m("Gönderildi; birkaç dakika içinde e-postanıza gelir (kayıtlar, yıllık plan Excel'i ve programın kendisi)."); }
+  catch(e){ m("Gönderilemedi, internet bağlantısını kontrol edin."); }
+  finally{ b.disabled=false; }
+});
 $("n-ydene").addEventListener("click",async()=>{
   if(!cfg.token){ nmsg("Önce eşitlemeyi açın."); return; }
   if(!navigator.onLine){ nmsg("İnternet yok."); return; }

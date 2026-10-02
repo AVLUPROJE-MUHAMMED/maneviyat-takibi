@@ -3,6 +3,9 @@
 // Hata olsa bile 0 ile çıkar; hata gonderim.json'a yazılır ve uygulamada görünür (her çalışmada e-posta gitmesin diye).
 import webpush from "web-push";
 import nodemailer from "nodemailer";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { crc32 } from "node:zlib";
 
 const TOKEN = process.env.GIST_TOKEN;
 const MAIL_USER = (process.env.GMAIL_USER || "").trim(), MAIL_PASS = (process.env.GMAIL_PASS || "").replace(/\s/g, ""); // aylık Excel e-postası için (isteğe bağlı)
@@ -153,18 +156,39 @@ function buildIcs(N, vakit, plan, now) {
 
 /* aylık yedek: uygulamanın not'a koyduğu yıllık plan Excel'i Gmail ile gönderilir */
 const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-async function sendMail(g, now, deneme) {
+/* programın kendisi: depodaki dosyalar sıkıştırmasız zip olarak; Gmail .js eklerini engellediği için .js dosyaları .js.txt adıyla konur */
+function programZip() {
+  const files = execSync("git ls-files", { encoding: "utf8" }).split("\n").filter(Boolean);
+  const parts = [], cen = []; let off = 0;
+  const u16 = n => Buffer.from([n & 255, (n >> 8) & 255]), u32 = n => { const b = Buffer.alloc(4); b.writeUInt32LE(n >>> 0); return b; };
+  const add = (name, data) => {
+    const nb = Buffer.from("cennet-yolu/" + name), c = crc32(data);
+    const head = Buffer.concat([u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(c), u32(data.length), u32(data.length), u16(nb.length), u16(0)]);
+    parts.push(head, nb, data);
+    cen.push(Buffer.concat([u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(c), u32(data.length), u32(data.length), u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off), nb]));
+    off += head.length + nb.length + data.length;
+  };
+  for (const f of files) add(/\.js$/.test(f) ? f + ".txt" : f, readFileSync(f));
+  add("GERI-YUKLEME.txt", Buffer.from("CENNET YOLU programının yedeği.\n\nGeri kurmak için: GitHub'da yeni bir depo açın, bu klasördeki her şeyi yükleyin. Sonu .js.txt ile biten dosyaların adındaki .txt'yi silin (örneğin sw.js.txt -> sw.js); e-posta .js eklerine izin vermediği için böyle gönderildi.\nSonra depo ayarlarında Pages'i açın (main, kök klasör) ve Secrets kısmına GIST_TOKEN, GMAIL_USER, GMAIL_PASS anahtarlarını ekleyin.\nKayıtlarınız ayrıca ekteki cennet-yolu-kayitlar dosyasındadır; uygulamada Ayarlar > Yedek > Dosyadan yükle ile geri yüklenir.\n"));
+  const cl = cen.reduce((a, b) => a + b.length, 0);
+  return Buffer.concat([...parts, ...cen, u32(0x06054b50), u16(0), u16(0), u16(cen.length), u16(cen.length), u32(cl), u32(off), u16(0)]);
+}
+/* tur: "aylik" (her ay), "deneme" (Bildirimler'deki deneme), "tam" (Yedek bölümündeki düğme: program da eklenir) */
+async function sendMail(g, now, tur) {
   const f = g.files[XFILE];
   if (!f) throw new Error("Excel dosyası henüz yok; uygulamayı internet açıkken bir kez açın");
   const b64 = f.truncated ? await (await fetch(f.raw_url, { headers: { Authorization: "Bearer " + TOKEN } })).text() : f.content;
+  const state = await fileJSON(g, FILE);
   const d = isoTR(now), ay = AYLAR[Number(d.slice(5, 7)) - 1] + " " + d.slice(0, 4);
+  const att = [{ filename: `cennet-yolu-plan-${d}.xlsx`, content: Buffer.from(b64, "base64"), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }];
+  if (state) att.push({ filename: `cennet-yolu-kayitlar-${d}.json`, content: JSON.stringify({ uygulama: "CENNET YOLU", tarih: new Date(now).toISOString(), veri: state }), contentType: "application/json" });
+  if (tur === "tam") att.push({ filename: `cennet-yolu-program-${d}.zip`, content: programZip(), contentType: "application/zip" });
+  const konu = tur === "tam" ? `CENNET YOLU · Tam yedek (${d.split("-").reverse().join(".")})` : `CENNET YOLU · Yıllık plan yedeği (${ay})${tur === "deneme" ? " · deneme" : ""}`;
+  const metin = tur === "tam"
+    ? "Esselâmü aleyküm,\n\nCENNET YOLU'nun tam yedeği ektedir:\n• cennet-yolu-plan: yıllık plan (Excel)\n• cennet-yolu-kayitlar: bütün kayıtlarınız ve ayarlarınız; uygulamada Ayarlar > Yedek > Dosyadan yükle ile geri yüklenir\n• cennet-yolu-program: programın kendisi; geri kurma adımları içindeki GERI-YUKLEME.txt dosyasında\n\nBu e-postayı silmeden saklayın.\n"
+    : "Esselâmü aleyküm,\n\nYıllık planınızın Excel dosyası ve kayıtlarınızın yedeği ektedir. Dosyalar, uygulamanın en son internete bağlandığı güne göredir.\n\nBu e-posta CENNET YOLU uygulamasından her ay kendiliğinden gönderilir. Kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Bildirimler bölümüne bakın.\n";
   const tr = nodemailer.createTransport({ service: "gmail", auth: { user: MAIL_USER, pass: MAIL_PASS }, connectionTimeout: 20000, greetingTimeout: 15000, socketTimeout: 30000 });
-  await tr.sendMail({
-    from: `"CENNET YOLU" <${MAIL_USER}>`, to: MAIL_USER,
-    subject: `CENNET YOLU · Yıllık plan yedeği (${ay})${deneme ? " · deneme" : ""}`,
-    text: `Esselâmü aleyküm,\n\nYıllık planınızın Excel dosyası ektedir. Dosya, uygulamanın en son internete bağlandığı güne göredir.\n\nBu e-posta CENNET YOLU uygulamasından her ay kendiliğinden gönderilir. Kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Bildirimler bölümüne bakın.\n`,
-    attachments: [{ filename: `cennet-yolu-plan-${d}.xlsx`, content: Buffer.from(b64, "base64"), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }]
-  });
+  await tr.sendMail({ from: `"CENNET YOLU" <${MAIL_USER}>`, to: MAIL_USER, subject: konu, text: metin, attachments: att });
 }
 
 async function main() {
@@ -219,10 +243,17 @@ async function main() {
     gon.mail = { ...(gon.mail || {}), kurulu: !!(MAIL_USER && MAIL_PASS), to: MAIL_USER };
     const yDue = Y.on && gon.yedek !== ay && Number(isoTR(now).slice(8)) >= Number(Y.gun) && now >= at(isoTR(now), Y.saat);
     const yTest = bil?.yedekTest && bil.yedekTest !== gon.yedekTest;
+    if (bil?.yedekMail && bil.yedekMail !== gon.yedekMail) { // Yedek bölümündeki "Yedeği e-postama gönder"
+      gon.yedekMail = bil.yedekMail;
+      if (gon.mail.kurulu) {
+        try { await sendMail(g, now, "tam"); gon.mail.last = now; delete gon.mail.error; log("tam yedek e-postası gönderildi"); }
+        catch (e) { gon.mail.error = e.message + " (" + hhmm(now) + ")"; log("tam yedek gönderilemedi", e.message); }
+      }
+    }
     if (yDue || yTest) {
       let mailed = false;
       if (gon.mail.kurulu) {
-        try { await sendMail(g, now, !yDue); mailed = true; gon.mail.last = now; delete gon.mail.error; log("e-posta gönderildi", MAIL_USER); }
+        try { await sendMail(g, now, yDue ? "aylik" : "deneme"); mailed = true; gon.mail.last = now; delete gon.mail.error; log("e-posta gönderildi", MAIL_USER); }
         catch (e) { gon.mail.error = e.message + " (" + hhmm(now) + ")"; log("e-posta gönderilemedi", e.message); }
       }
       if (yTest) gon.yedekTest = bil.yedekTest;
