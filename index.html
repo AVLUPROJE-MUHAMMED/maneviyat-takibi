@@ -284,6 +284,8 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
         <button class="btn danger" id="ntfoff" type="button" hidden>Bu cihazda kapat</button>
       </div>
       <div id="ntfsetup" class="warn" hidden><span>Bildirim gönderen zamanlayıcı henüz çalışmadı. Bir kez GitHub'da gizli anahtar eklenmesi gerekiyor: <a href="https://github.com/AVLUPROJE-MUHAMMED/maneviyat-takibi/settings/secrets/actions/new" target="_blank" rel="noopener">bu sayfada</a> Name kutusuna <b>GIST_TOKEN</b>, Secret kutusuna eşitlemede kullandığınız ghp_ ile başlayan anahtarı yazıp Add secret'a basın.</span></div>
+      <label class="chk"><input type="checkbox" id="n-oto"> Konumuma göre ilçemi kendiliğinden bul</label>
+      <div class="row"><button class="btn ghost" id="n-konum" type="button">Konumumu şimdi bul</button><span class="small muted" id="n-konummsg"></span></div>
       <div class="fields">
         <label class="f">İl<select id="n-il"></select></label>
         <label class="f">İlçe<select id="n-ilce"></select></label>
@@ -910,6 +912,7 @@ async function notifySync(g){
     try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
     window.__mt.setVakit&&window.__mt.setVakit(server.days); }
   renderNotify(false);
+  locate(false);
   if(pushBusy) return;
   const cur=(await fileJSON(g,BFILE))||{}; cur.subs=cur.subs||{};
   if(cfg.push&&cur.subs[cfg.dev]&&cur.vapid&&!cfg.vapid){ cfg.vapid=cur.vapid; saveCfg(); }
@@ -1004,9 +1007,47 @@ async function renderNotify(form){
     V.append(n,t,mk("giris","Vakit girince"),mk("once","Çıkmadan önce"));
   }
   $("n-dk").value=N.dk; $("n-atla").checked=!!N.atla;
+  $("n-oto").checked=!!N.oto;
   $("n-pon").checked=!!N.program.on; $("n-psaat").value=N.program.saat;
   $("n-oon").checked=!!N.okuma.on; $("n-osaat").value=N.okuma.saat;
 }
+/* konumdan ilçe: telefonun konumu -> adres (il, ilçe) -> Diyanet ilçe listesinde eşleşen ilçe */
+const norm=t=>String(t||"").toLocaleUpperCase("tr").replace(/Ç/g,"C").replace(/Ğ/g,"G").replace(/İ/g,"I").replace(/Ö/g,"O").replace(/Ş/g,"S").replace(/Ü/g,"U").replace(/\b(ILI|ILCESI|MERKEZ|PROVINCE)\b/g,"").replace(/[^A-Z]/g,"");
+async function reverse(lat,lon){
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=tr&zoom=10&lat=${lat}&lon=${lon}`);const j=await r.json();const a=j.address||{};
+    return {il:a.province||a.state||a.city,ilce:[a.town,a.county,a.city_district,a.district,a.municipality,a.city].filter(Boolean)};}
+  catch(e){const r=await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=tr`);const j=await r.json();
+    return {il:j.principalSubdivision,ilce:[j.city,j.locality].filter(Boolean)};}
+}
+function matchIlce(adr){
+  const row=(ILCE||[]).find(x=>norm(x[0])===norm(adr.il)); if(!row) return null;
+  for(const n of adr.ilce){const c=row[1].find(x=>norm(x[0])===norm(n)); if(c) return {il:row[0],ad:c[0],id:c[1]};}
+  const c=row[1].find(x=>norm(x[0])===norm(row[0]))||row[1][0]; return c?{il:row[0],ad:c[0],id:c[1]}:null;
+}
+const kmsg=t=>{$("n-konummsg").textContent=t};
+async function locate(force){
+  const N=window.__mt.get().settings.notify;
+  if(!force&&(!N.oto||Date.now()-(cfg.locT||0)<30*60000)) return;
+  if(!("geolocation" in navigator)){kmsg("Bu cihaz konum vermiyor.");return}
+  if(force) kmsg("Konum bulunuyor…");
+  const pos=await new Promise(ok=>navigator.geolocation.getCurrentPosition(ok,e=>{ok(null);kmsg(e.code===1?"Konum izni verilmedi. iPhone Ayarlar → Gizlilik → Konum Servisleri'nden izin verin.":"Konum alınamadı.")},{enableHighAccuracy:false,timeout:15000,maximumAge:10*60000}));
+  if(!pos) return;
+  cfg.locT=Date.now(); saveCfg();
+  try{
+    await loadIlce();
+    const m=matchIlce(await reverse(pos.coords.latitude.toFixed(4),pos.coords.longitude.toFixed(4)));
+    if(!m){kmsg("Bulunduğunuz yer Diyanet listesinde eşleşmedi, ilçeyi elle seçin.");return}
+    if(m.id!==N.ilce.id){
+      window.__mt.saveSettings(s=>{s.notify.ilce=m});
+      kmsg("Konumunuz: "+m.il+" / "+m.ad+". Vakitler birkaç dakika içinde bu ilçeye göre güncellenir.");
+      if($("settings").open) renderNotify(true);
+    }else kmsg("Konumunuz: "+m.il+" / "+m.ad+".");
+  }catch(e){kmsg("Konumdan ilçe bulunamadı (internet?).")}
+}
+$("n-konum").addEventListener("click",()=>locate(true));
+$("n-oto").addEventListener("change",()=>{window.__mt.saveSettings(s=>{s.notify.oto=$("n-oto").checked?1:0}); if($("n-oto").checked) locate(true);});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden) locate(false)});
+setTimeout(()=>locate(false),1500);
 $("n-il").addEventListener("change",()=>fillIlce($("n-il").value));
 $("ntfsave").addEventListener("click",()=>{
   window.__mt.saveSettings(s=>{
