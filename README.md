@@ -1,4 +1,4 @@
-# Cennet Yolculuğu
+# Cennet Yolu
 
 Telefona ve tablete kurulabilen, internetsiz de çalışan günlük maneviyat takibi: beş vakit namaz, 20 yıllık kaza borcu ve yeni kaza listesi, Risale-i Nur, Kur'an ve meal, Sekine, haftalık Büyük Cevşen ve bir yıllık plan.
 
