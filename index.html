@@ -48,6 +48,10 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .iconbtn{border:1px solid var(--line);background:var(--card);border-radius:10px;min-width:44px;height:40px;padding:0 10px}
 .iconbtn:disabled{opacity:.35;cursor:default}
 .sync{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+/* telefonda başlık tek satırda, eşitleme yazısı hep altında; yazı uzayıp kısalınca düğmeler yerinden oynamasın */
+#syncdot{flex:none}
+#synctext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+@media (max-width:640px){.toprow h1{flex:0 0 100%}.toprow>.row{flex:1 1 100%;min-width:0;justify-content:space-between;flex-wrap:nowrap}.toprow .sync{flex:1 1 0;min-width:0}.toprow>.row>button{flex:none}}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .dot.on{background:var(--ok)}
 .progress{height:6px;border-radius:6px;background:var(--idle);overflow:hidden;margin-top:8px}
