@@ -115,6 +115,8 @@ function events(state, bil, vakit, now) {
 async function main() {
   const gid = await findGist();
   if (!gid) { log("Gist bulunamadı; uygulamada eşitleme açılınca oluşur."); return; }
+  { const g = await gh("/gists/" + gid); const b = await fileJSON(g, BFILE); const st = await fileJSON(g, FILE);
+    log("dosyalar", Object.keys(g.files).join(","), "cihaz", Object.values(b?.subs || {}).map(x => x.ad + ":" + String(x.endpoint).slice(8, 30)).join(" "), "vapid", !!b?.vapid, "ilçe", st?.settings?.notify?.ilce?.ad, "test", b?.test); }
   let gon = null, gonTxt = "", vapidSet = "";
   while (Date.now() - T0 < LIFE) {
     const g = await gh("/gists/" + gid);

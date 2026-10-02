@@ -3,7 +3,11 @@ name: Bildirimler
 on:
   schedule:
     - cron: "3,13,23,33,43,53 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      sure:
+        description: Kaç dakika çalışsın
+        default: "28"
 permissions:
   contents: write
 concurrency:
@@ -21,6 +25,7 @@ jobs:
       - run: node scripts/bildirim.mjs
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          LIFE_MIN: ${{ inputs.sure || '28' }}
       # GitHub, 60 gün değişiklik olmayan depolarda zamanlayıcıyı durdurur; ayda bir küçük bir kayıt düşerek açık tutar
       - name: Zamanlayıcıyı canlı tut
         run: |
