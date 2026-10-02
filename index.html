@@ -301,13 +301,6 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <label class="chk"><input type="checkbox" id="n-atla"> "Kıldım" dediğim vakit için hatırlatma gönderme</label>
       <div class="row"><label class="chk"><input type="checkbox" id="n-pon"> Günün okuma programı</label><input id="n-psaat" type="time" style="width:auto"></div>
       <div class="row"><label class="chk"><input type="checkbox" id="n-oon"> Okumalarım bitmediyse hatırlat</label><input id="n-osaat" type="time" style="width:auto"></div>
-      <label class="chk"><input type="checkbox" id="n-yon"> Ayda bir yıllık planı Excel olarak yedekle</label>
-      <div class="fields">
-        <label class="f">Ayın kaçında<input id="n-ygun" type="number" min="1" max="28" inputmode="numeric"></label>
-        <label class="f">Saat<input id="n-ysaat" type="time"></label>
-      </div>
-      <div id="n-yedekbox" class="small muted"></div>
-      <div class="row"><button class="btn ghost" id="n-ydene" type="button">E-postama şimdi gönder (deneme)</button></div>
       <label class="chk"><input type="checkbox" id="n-takvim"> Uçak modunda da gelsin (vakit ve program uyarıları iPhone takviminden)</label>
       <div id="n-takvimbox" class="small muted" hidden></div>
       <div class="row"><button class="btn" id="ntfsave" type="button">Bildirim ayarlarını kaydet</button><span class="small muted" id="ntfmsg"></span></div>
@@ -328,6 +321,15 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
         <button class="btn danger" id="importbtn" type="button">Geri yükle</button>
         <span class="small muted" id="importmsg"></span>
       </div>
+          <h3 style="margin:8px 0 0;font-size:1rem">Aylık otomatik yedek</h3>
+      <label class="chk"><input type="checkbox" id="n-yon"> Ayda bir tam yedek gönder ve hatırlat</label>
+      <div class="fields">
+        <label class="f">Ayın kaçında<input id="n-ygun" type="number" min="1" max="28" inputmode="numeric"></label>
+        <label class="f">Saat<input id="n-ysaat" type="time"></label>
+      </div>
+      <div id="n-yedekbox" class="small muted"></div>
+      <div class="row"><button class="btn" id="n-ysave" type="button">Aylık yedek ayarını kaydet</button><button class="btn ghost" id="n-ydene" type="button">E-postama şimdi gönder (deneme)</button></div>
+      <p class="small muted" id="n-ymsg" style="margin:0"></p>
     </fieldset>
   </details>
 </div>
@@ -1084,7 +1086,7 @@ async function editBil(fn){
   await fn(bil);
   await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[BFILE]:{content:JSON.stringify(bil)}}})});
 }
-const nmsg=t=>{$("ntfmsg").textContent=t};
+const nmsg=t=>{$("ntfmsg").textContent=t}, ymsg=t=>{$("n-ymsg").textContent=t};
 /* aylık e-posta için yıllık planın Excel'i günde bir kez not'a konur; zamanlayıcı oradan e-postaya ekler */
 const XFILE="yedek.xlsx.b64";
 async function upXlsx(force){
@@ -1242,7 +1244,6 @@ $("ntfsave").addEventListener("click",()=>{
     const hm=v=>/^\d\d:\d\d$/.test(v)?v:null;
     N.program={on:$("n-pon").checked?1:0,saat:hm($("n-psaat").value)||N.program.saat};
     N.okuma={on:$("n-oon").checked?1:0,saat:hm($("n-osaat").value)||N.okuma.saat};
-    N.yedek={on:$("n-yon").checked?1:0,gun:Math.max(1,Math.min(28,parseInt($("n-ygun").value,10)||1)),saat:hm($("n-ysaat").value)||N.yedek.saat};
   });
   showVakit(); renderNotify(false);
   nmsg(cfg.token?"Kaydedildi; zamanlayıcı birkaç dakika içinde yeni ayarlarla çalışır.":"Kaydedildi. Bildirimlerin gelmesi için eşitlemeyi açın.");
@@ -1255,16 +1256,20 @@ $("mailbtn").addEventListener("click",async()=>{
   const m=t=>{$("mailmsg").textContent=t};
   if(!cfg.token){ m("Bunun için önce Ayarlar'da eşitlemeyi açın."); return; }
   if(!navigator.onLine){ m("İnternet yok; bağlanınca yeniden deneyin."); return; }
-  if(server&&server.mail&&!server.mail.kurulu){ m("E-posta kurulmamış; Bildirimler bölümündeki Aylık yedek açıklamasındaki adımları yapın."); return; }
+  if(server&&server.mail&&!server.mail.kurulu){ m("E-posta kurulmamış; aşağıdaki Aylık otomatik yedek açıklamasındaki adımları yapın."); return; }
   const b=$("mailbtn"); b.disabled=true; m("Yedek hazırlanıyor…");
   try{ await sync(); await upXlsx(true); await editBil(bil=>{bil.yedekMail=Date.now()}); m("Gönderildi; birkaç dakika içinde e-postanıza gelir (kayıtlar, yıllık plan Excel'i ve programın kendisi)."); }
   catch(e){ m("Gönderilemedi, internet bağlantısını kontrol edin."); }
   finally{ b.disabled=false; }
 });
+$("n-ysave").addEventListener("click",()=>{
+  window.__mt.saveSettings(s=>{const Y=s.notify.yedek; Y.on=$("n-yon").checked?1:0; Y.gun=Math.max(1,Math.min(28,parseInt($("n-ygun").value,10)||1)); if(/^\d\d:\d\d$/.test($("n-ysaat").value)) Y.saat=$("n-ysaat").value;});
+  renderYedek(); $("n-ymsg").textContent=cfg.token?"Kaydedildi.":"Kaydedildi. E-posta ve bildirim için eşitlemeyi açın.";
+});
 $("n-ydene").addEventListener("click",async()=>{
-  if(!cfg.token){ nmsg("Önce eşitlemeyi açın."); return; }
-  if(!navigator.onLine){ nmsg("İnternet yok."); return; }
-  nmsg("Excel hazırlanıyor…");
+  if(!cfg.token){ ymsg("Önce eşitlemeyi açın."); return; }
+  if(!navigator.onLine){ ymsg("İnternet yok."); return; }
+  ymsg("Excel hazırlanıyor…");
   try{ await upXlsx(true); await editBil(bil=>{bil.yedekTest=Date.now()}); nmsg("Gönderildi; birkaç dakika içinde e-postanıza gelir."); }
   catch(e){ nmsg("Gönderilemedi, internet bağlantısını kontrol edin."); }
 });
