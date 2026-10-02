@@ -184,7 +184,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <button class="iconbtn" id="next" aria-label="Sonraki gün">▶</button>
       <button class="iconbtn" id="today">Bugün</button>
     </div>
-    <div id="yedekbar" class="warn" hidden><span>Aylık yedek zamanı: yıllık planınızı Excel olarak kaydedin ya da kendinize gönderin.</span><button class="btn" id="yedekpay" type="button">Excel'i paylaş</button><button class="btn ghost" id="yedekgec" type="button">Bu ay geç</button></div>
+    <div id="yedekbar" class="warn" hidden><span>Aylık yedek zamanı: 1 yıllık planınızı Excel olarak kaydedin ya da kendinize gönderin.</span><button class="btn" id="yedekpay" type="button">Excel'i paylaş</button><button class="btn ghost" id="yedekgec" type="button">Bu ay geç</button></div>
     <div class="row small muted" style="justify-content:space-between;margin-top:6px"><span id="daysum"></span><span id="daypct" class="num"></span></div>
     <div class="progress"><i id="daybar" style="width:0"></i></div>
   </header>
@@ -196,6 +196,19 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
         <div id="vakitler"></div>
       </section>
 
+      <section class="card" aria-labelledby="h-oku">
+        <div class="cardhead"><h2 id="h-oku">Günlük okumalar</h2></div>
+        <div id="tasks"></div>
+        <div class="cardhead" style="margin-top:14px"><h3 id="h-cev" style="margin:0;font-size:1.05rem">Büyük Cevşen</h3><span class="small muted">Haftada bir hatim</span></div>
+        <div class="task" style="border:0;padding-top:0">
+          <div class="info"><div class="t" id="cevpart"></div><div class="small muted" id="cevsub"></div></div>
+          <button class="check" id="cevbtn" aria-label="Bugünkü cevşen bölümünü okudum">✓</button>
+        </div>
+        <div class="week" id="week"></div>
+      </section>
+    </div>
+
+    <div class="col">
       <section class="card" aria-labelledby="h-old">
         <div class="cardhead"><h2 id="h-old">20 yıllık kaza borcu</h2><span class="small muted" id="oldrange"></span></div>
         <div class="kazabig"><div class="n num" id="oldtotal">0</div><div class="small muted" id="oldsub">vakit kaldı</div></div>
@@ -212,26 +225,10 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
         <p class="small muted" style="margin:10px 0 0">Bir vakte "Kılmadım" deyince buraya eklenir (yatsıda vitir de). Kazasını kılınca o vaktin altındaki düğmeye basın.</p>
       </section>
     </div>
-
-    <div class="col">
-      <section class="card" aria-labelledby="h-oku">
-        <div class="cardhead"><h2 id="h-oku">Günlük okumalar</h2></div>
-        <div id="tasks"></div>
-      </section>
-
-      <section class="card" aria-labelledby="h-cev">
-        <div class="cardhead"><h2 id="h-cev">Büyük Cevşen</h2><span class="small muted">Haftada bir hatim</span></div>
-        <div class="task" style="border:0;padding-top:0">
-          <div class="info"><div class="t" id="cevpart"></div><div class="small muted" id="cevsub"></div></div>
-          <button class="check" id="cevbtn" aria-label="Bugünkü cevşen bölümünü okudum">✓</button>
-        </div>
-        <div class="week" id="week"></div>
-      </section>
-    </div>
   </div>
 
   <section class="card" style="margin-top:14px" aria-labelledby="h-hist">
-    <div class="cardhead"><h2 id="h-hist">Bir yıllık plan</h2><span class="small muted">3 Ekim'den itibaren · yukarı aşağı ve yana kaydırabilirsiniz</span></div>
+    <div class="cardhead"><h2 id="h-hist">1 yıllık plan</h2><span class="small muted">3 Ekim'den itibaren · yukarı aşağı ve yana kaydırabilirsiniz</span></div>
         <div class="histwrap" id="histwrap"><table class="hist" id="hist"></table></div>
     <div class="row" style="margin-top:10px"><button class="btn ghost" id="xlsbtn" type="button">Excel indir</button><button class="btn ghost" id="pdfbtn" type="button">PDF indir</button></div>
     <div class="legend"><span><i style="background:var(--ok)"></i>Kılındı / okundu</span><span><i style="background:var(--late)"></i>Kaza edildi</span><span><i style="background:var(--no)"></i>Kılınmadı / okunmadı</span><span><i style="background:var(--idle)"></i>İleri tarih: plan</span></div>
@@ -852,7 +849,7 @@ function buildXlsx(){
   const ST={ok:2,late:3,no:4,plan:5,na:1};
   const col=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
   const cell=(r,c,t,s)=>`<c r="${col(c)}${r}" t="inlineStr" s="${s}"><is><t>${xesc(t)}</t></is></c>`;
-  let x=`<row r="1">${cell(1,0,"CENNET YOLU · Bir yıllık plan",7)}</row><row r="2">${head.map((h,i)=>cell(2,i,i?h:"Tarih",6)).join("")}</row>`;
+  let x=`<row r="1">${cell(1,0,"CENNET YOLU · 1 yıllık plan",7)}</row><row r="2">${head.map((h,i)=>cell(2,i,i?h:"Tarih",6)).join("")}</row>`;
   rows.forEach((r,i)=>{const n=i+3; x+=`<row r="${n}">${cell(n,0,r.label,8)}${r.cells.map((c,j)=>cell(n,j+1,c.t,ST[c.c])).join("")}</row>`});
   const widths=head.map((h,i)=>i===0?16:/Risale|Cevşen/.test(h)?30:/Kaza/.test(h)?13:11);
   const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane xSplit="1" ySplit="2" topLeftCell="B3" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData>${x}</sheetData></worksheet>`;
@@ -863,7 +860,7 @@ function buildXlsx(){
   const files=[
     ["[Content_Types].xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
     ["_rels/.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
-    ["xl/workbook.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Bir yıllık plan" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ["xl/workbook.xml",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="1 yıllık plan" sheetId="1" r:id="rId1"/></sheets></workbook>'],
     ["xl/_rels/workbook.xml.rels",'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
     ["xl/styles.xml",styles],["xl/worksheets/sheet1.xml",sheet]];
   return zip(files);
@@ -880,7 +877,7 @@ async function buildPdf(){
   for(let p=0;p<pages;p++){
     const cv=document.createElement("canvas"); cv.width=W; cv.height=Hh; const ctx=cv.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,Hh);
-    ctx.fillStyle="#1f4f7a"; ctx.font="bold 34px Georgia, serif"; ctx.textBaseline="middle"; ctx.fillText("CENNET YOLU · Bir yıllık plan",M,M+12);
+    ctx.fillStyle="#1f4f7a"; ctx.font="bold 34px Georgia, serif"; ctx.textBaseline="middle"; ctx.fillText("CENNET YOLU · 1 yıllık plan",M,M+12);
     ctx.fillStyle="#5b6b75"; ctx.font="20px system-ui, sans-serif"; ctx.textAlign="right"; ctx.fillText("Sayfa "+(p+1)+" / "+pages+" · "+new Date().toLocaleDateString("tr-TR"),W-M,M+12); ctx.textAlign="left";
     let x=M; ctx.font="bold 19px system-ui, sans-serif";
     head.forEach((h,i)=>{ctx.fillStyle="#1f4f7a";ctx.fillRect(x+2,TOP,cw[i]-4,HEAD-4);ctx.fillStyle="#fff";ctx.textAlign="center";ctx.fillText(fit(ctx,i?h:"Tarih",cw[i]-10),x+cw[i]/2,TOP+HEAD/2-2);x+=cw[i]});
@@ -1134,7 +1131,7 @@ function renderYedek(){
   const when="Her ayın "+Y.gun+". günü "+Y.saat+"'te";
   if(!Y.on){ B.textContent="Aylık yedek kapalı. İstediğiniz zaman yukarıdaki Yedeği e-postama gönder düğmesini kullanabilirsiniz."; return; }
   if(M&&M.kurulu){
-    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
+    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: 1 yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
   }else{
     B.innerHTML=when+" uygulamanın üstünde <b>Excel'i paylaş</b> düğmesi çıkar ve telefonunuza bildirim gelir; paylaş menüsünden Gmail'i seçebilirsiniz. "+
       "Dosyanın e-postanıza <b>kendiliğinden</b> gitmesi için bir kez kurulum gerekir: "+
@@ -1289,7 +1286,7 @@ $("mailbtn").addEventListener("click",async()=>{
   if(!navigator.onLine){ m("İnternet yok; bağlanınca yeniden deneyin."); return; }
   if(server&&server.mail&&!server.mail.kurulu){ m("E-posta kurulmamış; aşağıdaki Aylık otomatik yedek açıklamasındaki adımları yapın."); return; }
   const b=$("mailbtn"); b.disabled=true; m("Yedek hazırlanıyor…");
-  try{ await sync(); await upXlsx(true); await editBil(bil=>{bil.yedekMail=Date.now()}); m("Gönderildi; birkaç dakika içinde e-postanıza gelir (kayıtlar, yıllık plan Excel'i ve programın kendisi)."); }
+  try{ await sync(); await upXlsx(true); await editBil(bil=>{bil.yedekMail=Date.now()}); m("Gönderildi; birkaç dakika içinde e-postanıza gelir (kayıtlar, 1 yıllık plan Excel'i ve programın kendisi)."); }
   catch(e){ m("Gönderilemedi, internet bağlantısını kontrol edin."); }
   finally{ b.disabled=false; }
 });

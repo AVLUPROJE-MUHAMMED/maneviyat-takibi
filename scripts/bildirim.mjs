@@ -183,10 +183,10 @@ async function sendMail(g, now, tur) {
   const att = [{ filename: `cennet-yolu-plan-${d}.xlsx`, content: Buffer.from(b64, "base64"), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }];
   if (state && tur !== "deneme") att.push({ filename: `cennet-yolu-kayitlar-${d}.json`, content: JSON.stringify({ uygulama: "CENNET YOLU", tarih: new Date(now).toISOString(), veri: state }), contentType: "application/json" });
   if (tur !== "deneme") att.push({ filename: `cennet-yolu-program-${d}.zip`, content: programZip(), contentType: "application/zip" });
-  const konu = tur === "tam" ? `CENNET YOLU · Tam yedek (${d.split("-").reverse().join(".")})` : tur === "aylik" ? `CENNET YOLU · Aylık tam yedek (${ay})` : `CENNET YOLU · Yıllık plan yedeği (${ay}) · deneme`;
+  const konu = tur === "tam" ? `CENNET YOLU · Tam yedek (${d.split("-").reverse().join(".")})` : tur === "aylik" ? `CENNET YOLU · Aylık tam yedek (${ay})` : `CENNET YOLU · 1 yıllık plan yedeği (${ay}) · deneme`;
   const metin = tur !== "deneme"
-    ? "Esselâmü aleyküm,\n\nCENNET YOLU'nun tam yedeği ektedir:\n• cennet-yolu-plan: yıllık plan (Excel)\n• cennet-yolu-kayitlar: bütün kayıtlarınız ve ayarlarınız; uygulamada Ayarlar > Yedek > Dosyadan yükle ile geri yüklenir\n• cennet-yolu-program: programın kendisi; geri kurma adımları içindeki GERI-YUKLEME.txt dosyasında\n\nBu e-postayı silmeden saklayın." + (tur === "aylik" ? " Bu e-posta her ay kendiliğinden gönderilir; kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Yedek bölümüne bakın." : "") + "\n"
-    : "Esselâmü aleyküm,\n\nYıllık planınızın Excel dosyası ektedir (deneme). Dosyalar, uygulamanın en son internete bağlandığı güne göredir.\n\nBu e-posta CENNET YOLU uygulamasından her ay kendiliğinden gönderilir. Kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Yedek bölümüne bakın.\n";
+    ? "Esselâmü aleyküm,\n\nCENNET YOLU'nun tam yedeği ektedir:\n• cennet-yolu-plan: 1 yıllık plan (Excel)\n• cennet-yolu-kayitlar: bütün kayıtlarınız ve ayarlarınız; uygulamada Ayarlar > Yedek > Dosyadan yükle ile geri yüklenir\n• cennet-yolu-program: programın kendisi; geri kurma adımları içindeki GERI-YUKLEME.txt dosyasında\n\nBu e-postayı silmeden saklayın." + (tur === "aylik" ? " Bu e-posta her ay kendiliğinden gönderilir; kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Yedek bölümüne bakın." : "") + "\n"
+    : "Esselâmü aleyküm,\n\n1 yıllık planınızın Excel dosyası ektedir (deneme). Dosyalar, uygulamanın en son internete bağlandığı güne göredir.\n\nBu e-posta CENNET YOLU uygulamasından her ay kendiliğinden gönderilir. Kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Yedek bölümüne bakın.\n";
   const tr = nodemailer.createTransport({ service: "gmail", auth: { user: MAIL_USER, pass: MAIL_PASS }, connectionTimeout: 20000, greetingTimeout: 15000, socketTimeout: 30000 });
   await tr.sendMail({ from: `"CENNET YOLU" <${MAIL_USER}>`, to: MAIL_USER, subject: konu, text: metin, attachments: att });
 }
@@ -260,7 +260,7 @@ async function main() {
       if (yDue) {
         gon.yedek = ay;
         if (subs.length && vapidSet) await push({ key: "yedek:" + ay, ttl: 86400, tag: "yedek", title: "Aylık yedek",
-          body: mailed ? "Yıllık planınızın Excel dosyası e-postanıza gönderildi." : "Yıllık planınızı Excel olarak kaydetme zamanı. Uygulamayı açıp \"Excel'i paylaş\"a dokunun." });
+          body: mailed ? "1 yıllık planınızın Excel dosyası e-postanıza gönderildi." : "1 yıllık planınızı Excel olarak kaydetme zamanı. Uygulamayı açıp \"Excel'i paylaş\"a dokunun." });
       }
     }
     // takvim dosyası (yalnız değiştiyse yazılır)
