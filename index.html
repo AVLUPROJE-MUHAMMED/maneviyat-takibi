@@ -18,15 +18,18 @@
 <style>
 /* Layout: tek sütun defter; tablette iki sütun (namaz solda, okumalar sağda). İznik çinisi mavisi vurgu, yeşil=yapıldı, kırmızı=yapılmadı. */
 :root{
+  --motif:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2296%22%20height%3D%2296%22%20viewBox%3D%220%200%2096%2096%22%3E%3Cpath%20d%3D%22M81.94%2081.94L57.94%2072.00M48.00%2096.00L57.94%2072.00M48.00%2096.00L38.06%2072.00M14.06%2081.94L38.06%2072.00M14.06%2081.94L24.00%2057.94M-0.00%2048.00L24.00%2057.94M-0.00%2048.00L24.00%2038.06M14.06%2014.06L24.00%2038.06M14.06%2014.06L38.06%2024.00M48.00%200.00L38.06%2024.00M48.00%200.00L57.94%2024.00M81.94%2014.06L57.94%2024.00M81.94%2014.06L72.00%2038.06M96.00%2048.00L72.00%2038.06M96.00%2048.00L72.00%2057.94M81.94%2081.94L72.00%2057.94M14.06%2014.06L0.00%208.24M-14.06%2014.06L0.00%208.24M-14.06%2014.06L-8.24%200.00M-14.06%20-14.06L-8.24%200.00M-14.06%20-14.06L0.00%20-8.24M14.06%20-14.06L0.00%20-8.24M14.06%20-14.06L8.24%200.00M14.06%2014.06L8.24%200.00M110.06%2014.06L96.00%208.24M81.94%2014.06L96.00%208.24M81.94%2014.06L87.76%200.00M81.94%20-14.06L87.76%200.00M81.94%20-14.06L96.00%20-8.24M110.06%20-14.06L96.00%20-8.24M110.06%20-14.06L104.24%200.00M110.06%2014.06L104.24%200.00M14.06%20110.06L0.00%20104.24M-14.06%20110.06L0.00%20104.24M-14.06%20110.06L-8.24%2096.00M-14.06%2081.94L-8.24%2096.00M-14.06%2081.94L0.00%2087.76M14.06%2081.94L0.00%2087.76M14.06%2081.94L8.24%2096.00M14.06%20110.06L8.24%2096.00M110.06%20110.06L96.00%20104.24M81.94%20110.06L96.00%20104.24M81.94%20110.06L87.76%2096.00M81.94%2081.94L87.76%2096.00M81.94%2081.94L96.00%2087.76M110.06%2081.94L96.00%2087.76M110.06%2081.94L104.24%2096.00M110.06%20110.06L104.24%2096.00%22%20fill%3D%22none%22%20stroke%3D%22%23dce3e6%22%20stroke-width%3D%221.35%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E");
   --bg:#eef2f3; --card:#ffffff; --ink:#18262f; --muted:#5b6b75; --line:#d5dee2;
   --accent:#1f4f7a; --accent-soft:#e2ebf3; --ok:#23804f; --ok-soft:#dcf0e4; --no:#b83a32; --no-soft:#f7e0dd; --late:#d9a31c; --late-soft:#fbf0d2; --late-ink:#8a6200; --on-solid:#ffffff; --idle:#e4e9ec;
   --display:"Alegreya", Georgia, "Times New Roman", serif;
   --body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --motif:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2296%22%20height%3D%2296%22%20viewBox%3D%220%200%2096%2096%22%3E%3Cpath%20d%3D%22M81.94%2081.94L57.94%2072.00M48.00%2096.00L57.94%2072.00M48.00%2096.00L38.06%2072.00M14.06%2081.94L38.06%2072.00M14.06%2081.94L24.00%2057.94M-0.00%2048.00L24.00%2057.94M-0.00%2048.00L24.00%2038.06M14.06%2014.06L24.00%2038.06M14.06%2014.06L38.06%2024.00M48.00%200.00L38.06%2024.00M48.00%200.00L57.94%2024.00M81.94%2014.06L57.94%2024.00M81.94%2014.06L72.00%2038.06M96.00%2048.00L72.00%2038.06M96.00%2048.00L72.00%2057.94M81.94%2081.94L72.00%2057.94M14.06%2014.06L0.00%208.24M-14.06%2014.06L0.00%208.24M-14.06%2014.06L-8.24%200.00M-14.06%20-14.06L-8.24%200.00M-14.06%20-14.06L0.00%20-8.24M14.06%20-14.06L0.00%20-8.24M14.06%20-14.06L8.24%200.00M14.06%2014.06L8.24%200.00M110.06%2014.06L96.00%208.24M81.94%2014.06L96.00%208.24M81.94%2014.06L87.76%200.00M81.94%20-14.06L87.76%200.00M81.94%20-14.06L96.00%20-8.24M110.06%20-14.06L96.00%20-8.24M110.06%20-14.06L104.24%200.00M110.06%2014.06L104.24%200.00M14.06%20110.06L0.00%20104.24M-14.06%20110.06L0.00%20104.24M-14.06%20110.06L-8.24%2096.00M-14.06%2081.94L-8.24%2096.00M-14.06%2081.94L0.00%2087.76M14.06%2081.94L0.00%2087.76M14.06%2081.94L8.24%2096.00M14.06%20110.06L8.24%2096.00M110.06%20110.06L96.00%20104.24M81.94%20110.06L96.00%20104.24M81.94%20110.06L87.76%2096.00M81.94%2081.94L87.76%2096.00M81.94%2081.94L96.00%2087.76M110.06%2081.94L96.00%2087.76M110.06%2081.94L104.24%2096.00M110.06%20110.06L104.24%2096.00%22%20fill%3D%22none%22%20stroke%3D%22%23050a0e%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E");
   --bg:#0f171d; --card:#17222a; --ink:#e6edf0; --muted:#97a7b0; --line:#2a3842;
   --accent:#7fb2e0; --accent-soft:#1d3346; --ok:#5cc58c; --ok-soft:#173a29; --no:#ee7d74; --no-soft:#432220; --late:#e0b443; --late-soft:#3d321a; --late-ink:#f0cd72; --on-solid:#0f171d; --idle:#24323b; color-scheme:dark}}
 :root[data-theme="dark"]{
+  --motif:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2296%22%20height%3D%2296%22%20viewBox%3D%220%200%2096%2096%22%3E%3Cpath%20d%3D%22M81.94%2081.94L57.94%2072.00M48.00%2096.00L57.94%2072.00M48.00%2096.00L38.06%2072.00M14.06%2081.94L38.06%2072.00M14.06%2081.94L24.00%2057.94M-0.00%2048.00L24.00%2057.94M-0.00%2048.00L24.00%2038.06M14.06%2014.06L24.00%2038.06M14.06%2014.06L38.06%2024.00M48.00%200.00L38.06%2024.00M48.00%200.00L57.94%2024.00M81.94%2014.06L57.94%2024.00M81.94%2014.06L72.00%2038.06M96.00%2048.00L72.00%2038.06M96.00%2048.00L72.00%2057.94M81.94%2081.94L72.00%2057.94M14.06%2014.06L0.00%208.24M-14.06%2014.06L0.00%208.24M-14.06%2014.06L-8.24%200.00M-14.06%20-14.06L-8.24%200.00M-14.06%20-14.06L0.00%20-8.24M14.06%20-14.06L0.00%20-8.24M14.06%20-14.06L8.24%200.00M14.06%2014.06L8.24%200.00M110.06%2014.06L96.00%208.24M81.94%2014.06L96.00%208.24M81.94%2014.06L87.76%200.00M81.94%20-14.06L87.76%200.00M81.94%20-14.06L96.00%20-8.24M110.06%20-14.06L96.00%20-8.24M110.06%20-14.06L104.24%200.00M110.06%2014.06L104.24%200.00M14.06%20110.06L0.00%20104.24M-14.06%20110.06L0.00%20104.24M-14.06%20110.06L-8.24%2096.00M-14.06%2081.94L-8.24%2096.00M-14.06%2081.94L0.00%2087.76M14.06%2081.94L0.00%2087.76M14.06%2081.94L8.24%2096.00M14.06%20110.06L8.24%2096.00M110.06%20110.06L96.00%20104.24M81.94%20110.06L96.00%20104.24M81.94%20110.06L87.76%2096.00M81.94%2081.94L87.76%2096.00M81.94%2081.94L96.00%2087.76M110.06%2081.94L96.00%2087.76M110.06%2081.94L104.24%2096.00M110.06%20110.06L104.24%2096.00%22%20fill%3D%22none%22%20stroke%3D%22%23050a0e%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22/%3E%3C/svg%3E");
   --bg:#0f171d; --card:#17222a; --ink:#e6edf0; --muted:#97a7b0; --line:#2a3842;
   --accent:#7fb2e0; --accent-soft:#1d3346; --ok:#5cc58c; --ok-soft:#173a29; --no:#ee7d74; --no-soft:#432220; --late:#e0b443; --late-soft:#3d321a; --late-ink:#f0cd72; --on-solid:#0f171d; --idle:#24323b; color-scheme:dark}
 *{box-sizing:border-box}
@@ -42,6 +45,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
+/* Selçuklu yıldızı: sabit zemin deseni; yapışkan başlık aynı deseni hizalı taşır */
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg) var(--motif) 0 0/96px 96px;pointer-events:none}
+header.top{background-image:var(--motif);background-size:96px 96px}
 .toprow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .datenav{display:flex;align-items:center;gap:6px;margin-top:8px}
 .datenav .d{flex:1;min-width:0;text-align:center;font-weight:700}
@@ -60,6 +66,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .grid{display:grid;gap:14px}
 @media (min-width:820px){.grid{grid-template-columns:1fr 1fr;align-items:start}.col{display:grid;gap:14px}}
 .col{display:grid;gap:14px;min-width:0}
+.card,.cardhead{scroll-margin-top:12px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
 .cardhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 
@@ -111,7 +118,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .histwrap{overflow:auto;max-height:272px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 table.hist{border-collapse:separate;border-spacing:3px;font-size:.72rem;min-width:100%}
 .hist th{position:sticky;top:0;z-index:2;background:var(--card);font-weight:500;color:var(--muted);text-align:center;padding:4px 2px;white-space:nowrap}
-.hist td{text-align:center;padding:5px 6px;border-radius:5px;line-height:1.2;white-space:nowrap;font-weight:700;min-width:3.6rem}
+.hist td{cursor:pointer;text-align:center;padding:5px 6px;border-radius:5px;line-height:1.2;white-space:nowrap;font-weight:700;min-width:3.6rem}
 .hist td.w{white-space:normal;min-width:7.5rem}
 .hist .lbl{position:sticky;left:0;z-index:1;background:var(--card);text-align:left;color:var(--muted);font-weight:400;min-width:0;padding-inline:2px 6px;font-variant-numeric:tabular-nums}
 .hist th.lbl{z-index:3}
@@ -763,8 +770,13 @@ function renderHist(t){
 }
 $("hist").addEventListener("click",e=>{
   const tr=e.target.closest("tr[data-d]"); if(!tr) return;
-  const dd=tr.dataset.d; if(dd>todayIso()) return;
-  cur=dd; render(); window.scrollTo({top:0,behavior:"smooth"});
+  const dd=tr.dataset.d; if(dd>todayIso()){ toast("Bu gün henüz gelmedi; gününde açılır"); return; }
+  /* tıklanan sütuna göre o günün ilgili bölümüne git */
+  const td=e.target.closest("td"), col=td?[...tr.children].indexOf(td):0;
+  const to=col>=1&&col<=5?"h-namaz":col===6?"h-old":col>=7&&col<=10?"h-oku":col===11?"h-cev":null;
+  cur=dd; render();
+  const el=to&&$(to), sec=el&&(to==="h-cev"?el.parentNode:el.closest("section"));
+  if(sec) sec.scrollIntoView({behavior:"smooth",block:"start"}); else window.scrollTo({top:0,behavior:"smooth"});
 });
 function scrollToToday(){
   const w=$("histwrap"); const r=w.querySelector("tr.today"); if(!r) return;
@@ -976,6 +988,9 @@ $("opensettings").addEventListener("click",()=>{const d=$("settings");d.open=tru
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();yedekCheck()}});
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
 
+/* başlığın desenini zeminle hizala */
+function motifAlign(){const h=document.querySelector("header.top");if(!h)return;const r=h.getBoundingClientRect(),top=parseFloat(getComputedStyle(h).top)||0;h.style.backgroundPosition=(-r.left)+"px "+(-top)+"px"}
+addEventListener("resize",motifAlign);motifAlign();
 fillSettings(); render(); yedekCheck(); initCloud();
 })();
 
