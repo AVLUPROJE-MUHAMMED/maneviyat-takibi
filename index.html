@@ -1158,7 +1158,7 @@ function renderYedek(){
   const when="Her ayın "+Y.gun+". günü "+Y.saat+"'te";
   if(!Y.on){ B.textContent="Aylık yedek kapalı. İstediğiniz zaman yukarıdaki Yedeği e-postama gönder düğmesini kullanabilirsiniz."; return; }
   if(M&&M.kurulu){
-    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: 1 yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
+    B.textContent=when+" "+(M.to||"e-postanıza")+" adresine tam yedek gönderilir: 1 yıllık plan (Excel), bütün kayıtlarınız ve programın kendisi. Telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error&&!/552|5\.7\.0|blocked/i.test(M.error)?" Son gönderim yapılamadı"+((M.error.match(/\((\d\d:\d\d)\)$/)||[])[1]?" ("+M.error.match(/\((\d\d:\d\d)\)$/)[1]+")":"")+"; bir sonraki seferde yeniden denenir.":"");
   }else{
     B.innerHTML=when+" uygulamanın üstünde <b>Excel'i paylaş</b> düğmesi çıkar ve telefonunuza bildirim gelir; paylaş menüsünden Gmail'i seçebilirsiniz. "+
       "Dosyanın e-postanıza <b>kendiliğinden</b> gitmesi için bir kez kurulum gerekir: "+
