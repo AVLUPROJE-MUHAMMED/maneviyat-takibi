@@ -134,7 +134,7 @@ async function main() {
     if (bil?.vapid?.pub && bil.vapid.pub + bil.vapid.priv !== vapidSet) { webpush.setVapidDetails(APP, bil.vapid.pub, bil.vapid.priv); vapidSet = bil.vapid.pub + bil.vapid.priv; }
     const due = events(state, bil, gon.vakit.days, now).filter(e => !gon.sent[e.key] && e.at <= now && e.at > now - (e.late || LATE));
     for (const e of due) {
-      if (!subs.length || !vapidSet) { gon.sent[e.key] = now; continue; }
+      if (!subs.length || !vapidSet) continue; // henüz kayıtlı cihaz yok; süresi içinde kayıt olursa yine gönderilir
       let ok = 0;
       for (const s of subs) {
         try { await webpush.sendNotification(s, JSON.stringify({ title: e.title, body: e.body, tag: e.tag, url: APP }), { TTL: e.ttl, urgency: "high" }); ok++; }

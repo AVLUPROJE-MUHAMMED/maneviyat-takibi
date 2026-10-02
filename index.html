@@ -903,27 +903,34 @@ async function genVapid(){
 }
 function deviceName(){const u=navigator.userAgent;return /iPad/.test(u)?"iPad":/iPhone/.test(u)?"iPhone":/Android/.test(u)?(/Mobile/.test(u)?"Android telefon":"Android tablet"):"Bilgisayar"}
 const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+let pushBusy=false;
 async function notifySync(g){
   const gon=await fileJSON(g,GFILE);
   if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[]};
     try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
     window.__mt.setVakit&&window.__mt.setVakit(server.days); }
-  const bil=(await fileJSON(g,BFILE))||{}; const before=JSON.stringify(bil);
-  bil.subs=bil.subs||{};
-  const plan=window.__mtPlan||{}; if(Object.keys(plan).length) bil.plan=plan;
-  if(server&&server.gone) for(const [id,sb] of Object.entries(bil.subs)) if(server.gone.includes(sb.endpoint)) delete bil.subs[id];
-  if(cfg.push&&bil.subs[cfg.dev]&&bil.vapid&&!cfg.vapid){ cfg.vapid=bil.vapid; saveCfg(); }
-  if(cfg.push&&cfg.vapid){
-    if(!bil.vapid) bil.vapid=cfg.vapid;
-    else if(bil.vapid.pub!==cfg.vapid.pub){ cfg.push=false; delete bil.subs[cfg.dev]; saveCfg(); } // farklı anahtar: bildirimleri yeniden açmak gerekir
-  }
-  if(cfg.push&&cfg.dev&&pushOK()){
-    try{const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,no)=>setTimeout(no,3000))]); const sub=await reg.pushManager.getSubscription();
-      if(sub&&(!bil.subs[cfg.dev]||bil.subs[cfg.dev].endpoint!==sub.endpoint)) bil.subs[cfg.dev]=Object.assign(sub.toJSON(),{ad:deviceName(),t:Date.now()});
-    }catch(e){}
-  }
-  if(JSON.stringify(bil)!==before) await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[BFILE]:{content:JSON.stringify(bil)}}})});
   renderNotify(false);
+  if(pushBusy) return;
+  const cur=(await fileJSON(g,BFILE))||{}; cur.subs=cur.subs||{};
+  if(cfg.push&&cur.subs[cfg.dev]&&cur.vapid&&!cfg.vapid){ cfg.vapid=cur.vapid; saveCfg(); }
+  // anahtarı kaybolmuş ya da değişmiş abonelik işe yaramaz: bildirimleri yeniden açmak gerekir
+  if(cfg.push&&((!cfg.vapid&&!cur.vapid)||(cfg.vapid&&cur.vapid&&cur.vapid.pub!==cfg.vapid.pub))){ cfg.push=false; cfg.vapid=null; saveCfg(); renderNotify(false); }
+  let sub=null;
+  if(cfg.push&&cfg.dev&&pushOK()){
+    try{const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,no)=>setTimeout(no,3000))]); sub=await reg.pushManager.getSubscription();}catch(e){}
+  }
+  const plan=window.__mtPlan||{};
+  const gone=server&&server.gone||[];
+  const need=(Object.keys(plan).length&&JSON.stringify(plan)!==JSON.stringify(cur.plan))||Object.values(cur.subs).some(x=>gone.includes(x.endpoint))||
+    (sub&&(!cur.subs[cfg.dev]||cur.subs[cfg.dev].endpoint!==sub.endpoint))||(cfg.push&&cfg.vapid&&!cur.vapid);
+  if(!need) return;
+  // en güncel hâlini okuyup yalnız bu cihazın değişikliklerini uygula (başka cihazın yazdığını ezmemek için)
+  await editBil(bil=>{
+    if(Object.keys(plan).length) bil.plan=plan;
+    for(const [id,x] of Object.entries(bil.subs)) if(gone.includes(x.endpoint)) delete bil.subs[id];
+    if(cfg.push&&cfg.vapid&&!bil.vapid) bil.vapid=cfg.vapid;
+    if(sub&&bil.vapid&&cfg.vapid&&bil.vapid.pub===cfg.vapid.pub) bil.subs[cfg.dev]=Object.assign(sub.toJSON(),{ad:deviceName(),t:Date.now()});
+  });
 }
 async function editBil(fn){
   if(!cfg.gistId) await sync();
@@ -937,10 +944,10 @@ async function pushOn(){
   if(!pushOK()){ nmsg(/iPhone|iPad/.test(navigator.userAgent)?"iPhone'da bildirim için uygulamayı Safari'den ana ekrana ekleyip ana ekrandaki simgeden açın (iOS 16.4 ve üstü).":"Bu tarayıcı bildirim desteklemiyor."); return; }
   const perm=await Notification.requestPermission();
   if(perm!=="granted"){ nmsg("Bildirim izni verilmedi. Telefonun ayarlarından bu uygulamaya bildirim izni verin."); return; }
-  nmsg("Açılıyor…");
+  nmsg("Açılıyor…"); pushBusy=true;
   try{
     await editBil(async bil=>{
-      if(!bil.vapid) bil.vapid=await genVapid();
+      if(!bil.vapid) bil.vapid=cfg.vapid||await genVapid();
       const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,no)=>setTimeout(()=>no(new Error("uygulama hazır değil, sayfayı yenileyip tekrar deneyin")),10000))]);
       let sub=await reg.pushManager.getSubscription();
       if(sub&&b64u(sub.options&&sub.options.applicationServerKey||new ArrayBuffer(0))!==bil.vapid.pub){ await sub.unsubscribe(); sub=null; }
@@ -952,14 +959,15 @@ async function pushOn(){
     });
     cfg.push=true; saveCfg(); nmsg("Bildirimler bu cihazda açık.");
   }catch(e){ nmsg("Açılamadı: "+(e&&e.message||e&&e.code||"bilinmeyen hata")); }
-  renderNotify(false);
+  pushBusy=false; renderNotify(false);
 }
 async function pushOff(){
+  pushBusy=true;
   try{
     const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription(); if(sub) await sub.unsubscribe();
     if(cfg.token&&cfg.dev) await editBil(bil=>{delete bil.subs[cfg.dev]});
   }catch(e){}
-  cfg.push=false; saveCfg(); nmsg("Bu cihazda bildirimler kapatıldı."); renderNotify(false);
+  cfg.push=false; cfg.vapid=null; pushBusy=false; saveCfg(); nmsg("Bu cihazda bildirimler kapatıldı."); renderNotify(false);
 }
 async function pushTest(){
   try{const reg=await navigator.serviceWorker.ready; await reg.showNotification("Muhammed Maneviyat Takibi",{body:"Deneme: bildirimler bu cihazda görünüyor.",icon:"icon-192.png",badge:"icon-192.png",tag:"deneme"});}catch(e){}
@@ -979,7 +987,7 @@ async function renderNotify(form){
   const ago=server&&server.last?Math.round((Date.now()-server.last)/60000):null;
   st.textContent=(on?"Bu cihazda bildirimler açık.":"Bu cihazda bildirimler kapalı.")+
     (ago==null?"":" Zamanlayıcı en son "+(ago<1?"az önce":ago<120?ago+" dakika önce":Math.round(ago/60)+" saat önce")+" çalıştı.")+
-    (server&&server.error?" Son hata: "+server.error:"");
+    (server&&server.error?" Son hata: "+server.error:"")+(cfg.gistId?" (not "+cfg.gistId.slice(0,6)+")":"");
   $("ntfsetup").hidden=!(cfg.token&&(!server||!server.last));
   if(!form) return;
   const N=window.__mt.get().settings.notify;
