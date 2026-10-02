@@ -46,7 +46,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
 header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:20px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
 /* Selçuklu yıldızı: sabit zemin deseni; yapışkan başlık aynı deseni hizalı taşır */
-body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg) var(--motif) 0 0/96px 96px;pointer-events:none}
+/* deneme: motif sayfayla birlikte kayar (sabit hali: body::before position:fixed) */
+body{background:var(--motif) 0 0/96px 96px,var(--bg)}
 header.top{background-image:var(--motif);background-size:96px 96px}
 .toprow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .datenav{display:flex;align-items:center;gap:6px;margin-top:8px}
