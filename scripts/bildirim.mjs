@@ -2,11 +2,13 @@
 // Kullanıcının gizli gist'indeki ayarlara ve günlük kayıtlara bakar, Diyanet vakitlerine göre telefonlara Web Push gönderir.
 // Hata olsa bile 0 ile çıkar; hata gonderim.json'a yazılır ve uygulamada görünür (her çalışmada e-posta gitmesin diye).
 import webpush from "web-push";
+import nodemailer from "nodemailer";
 
 const TOKEN = process.env.GIST_TOKEN;
+const MAIL_USER = (process.env.GMAIL_USER || "").trim(), MAIL_PASS = (process.env.GMAIL_PASS || "").replace(/\s/g, ""); // aylık Excel e-postası için (isteğe bağlı)
 const LIFE = Number(process.env.LIFE_MIN || 28) * 60000;    // bir çalışmanın süresi; GitHub zamanlayıcısı gecikebildiği için çalışmalar üst üste biner (sırayla)
 const LATE = 2 * 3600000;                                   // geciken çalışmada okuma bildirimleri bu kadar geç de gönderilir (vakitlerde daha kısa)
-const DESC = "muhammed-maneviyat-takibi", FILE = "maneviyat.json", BFILE = "bildirim.json", GFILE = "gonderim.json";
+const DESC = "muhammed-maneviyat-takibi", FILE = "maneviyat.json", BFILE = "bildirim.json", GFILE = "gonderim.json", XFILE = "yedek.xlsx.b64";
 const APP = "https://avluproje-muhammed.github.io/maneviyat-takibi/";
 const UA = { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36" };
 const VK = [["sabah", "Sabah", "imsak", "gunes"], ["ogle", "Öğle", "ogle", "ikindi"], ["ikindi", "İkindi", "ikindi", "aksam"], ["aksam", "Akşam", "aksam", "yatsi"], ["yatsi", "Yatsı", "yatsi", "imsak+1"]];
@@ -76,7 +78,8 @@ function defaultsNotify(n = {}) {
     ilce: { il: "İSTANBUL", ad: "İSTANBUL", id: 9541, ...(n.ilce || {}) }, giris: { ...all, ...(n.giris || {}) }, once: { ...all, ...(n.once || {}) },
     dk: Math.max(1, Math.min(180, Number(n.dk) || 30)), atla: n.atla == null ? 1 : n.atla,
     program: { on: 1, saat: "07:30", ...(n.program || {}) }, okuma: { on: 1, saat: "21:00", ...(n.okuma || {}) },
-    takvim: n.takvim ? 1 : 0
+    takvim: n.takvim ? 1 : 0,
+    yedek: { on: 1, gun: 1, saat: "10:00", ...(n.yedek || {}) }
   };
 }
 const START = "2026-10-03";
@@ -147,6 +150,22 @@ function buildIcs(N, vakit, plan, now) {
   return L.map(fold).join("\r\n") + "\r\n";
 }
 
+/* aylık yedek: uygulamanın not'a koyduğu yıllık plan Excel'i Gmail ile gönderilir */
+const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+async function sendMail(g, now, deneme) {
+  const f = g.files[XFILE];
+  if (!f) throw new Error("Excel dosyası henüz yok; uygulamayı internet açıkken bir kez açın");
+  const b64 = f.truncated ? await (await fetch(f.raw_url, { headers: { Authorization: "Bearer " + TOKEN } })).text() : f.content;
+  const d = isoTR(now), ay = AYLAR[Number(d.slice(5, 7)) - 1] + " " + d.slice(0, 4);
+  const tr = nodemailer.createTransport({ service: "gmail", auth: { user: MAIL_USER, pass: MAIL_PASS }, connectionTimeout: 20000, greetingTimeout: 15000, socketTimeout: 30000 });
+  await tr.sendMail({
+    from: `"CENNET YOLU" <${MAIL_USER}>`, to: MAIL_USER,
+    subject: `CENNET YOLU · Yıllık plan yedeği (${ay})${deneme ? " · deneme" : ""}`,
+    text: `Esselâmü aleyküm,\n\nYıllık planınızın Excel dosyası ektedir. Dosya, uygulamanın en son internete bağlandığı güne göredir.\n\nBu e-posta CENNET YOLU uygulamasından her ay kendiliğinden gönderilir. Kapatmak ya da gününü değiştirmek için uygulamada Ayarlar > Bildirimler bölümüne bakın.\n`,
+    attachments: [{ filename: `cennet-yolu-plan-${d}.xlsx`, content: Buffer.from(b64, "base64"), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }]
+  });
+}
+
 async function main() {
   const gid = await findGist();
   if (!gid) { log("Gist bulunamadı; uygulamada eşitleme açılınca oluşur."); return; }
@@ -167,15 +186,37 @@ async function main() {
     }
     const subs = Object.values(bil?.subs || {}).filter(s => s.endpoint && !gon.gone.includes(s.endpoint));
     if (bil?.vapid?.pub && bil.vapid.pub + bil.vapid.priv !== vapidSet) { webpush.setVapidDetails(APP, bil.vapid.pub, bil.vapid.priv); vapidSet = bil.vapid.pub + bil.vapid.priv; }
-    const due = events(state, bil, gon.vakit.days, now).filter(e => !gon.sent[e.key] && e.at <= now && e.at > now - (e.late || LATE));
-    for (const e of due) {
-      if (!subs.length || !vapidSet) continue; // henüz kayıtlı cihaz yok; süresi içinde kayıt olursa yine gönderilir
+    const push = async e => {
       let ok = 0;
       for (const s of subs) {
         try { await webpush.sendNotification(s, JSON.stringify({ title: e.title, body: e.body, tag: e.tag, url: APP }), { TTL: e.ttl, urgency: "high" }); ok++; }
         catch (err) { log("gönderilemedi", s.ad, err.statusCode, err.body); if (err.statusCode === 404 || err.statusCode === 410) gon.gone.push(s.endpoint); }
       }
-      gon.sent[e.key] = now; log("gönderildi", e.key, ok + "/" + subs.length, e.title, "-", e.body);
+      log("gönderildi", e.key, ok + "/" + subs.length, e.title, "-", e.body);
+    };
+    const due = events(state, bil, gon.vakit.days, now).filter(e => !gon.sent[e.key] && e.at <= now && e.at > now - (e.late || LATE));
+    for (const e of due) {
+      if (!subs.length || !vapidSet) continue; // henüz kayıtlı cihaz yok; süresi içinde kayıt olursa yine gönderilir
+      await push(e); gon.sent[e.key] = now;
+    }
+    // aylık yedek: ayın seçilen günü ve saatinden sonra ayda bir kez (o gün kaçarsa sonraki çalışmada); ilk kurulduğu ay atlanır
+    const ay = isoTR(now).slice(0, 7), Y = N.yedek;
+    if (gon.yedek == null) gon.yedek = ay;
+    gon.mail = { ...(gon.mail || {}), kurulu: !!(MAIL_USER && MAIL_PASS), to: MAIL_USER };
+    const yDue = Y.on && gon.yedek !== ay && Number(isoTR(now).slice(8)) >= Number(Y.gun) && now >= at(isoTR(now), Y.saat);
+    const yTest = bil?.yedekTest && bil.yedekTest !== gon.yedekTest;
+    if (yDue || yTest) {
+      let mailed = false;
+      if (gon.mail.kurulu) {
+        try { await sendMail(g, now, !yDue); mailed = true; gon.mail.last = now; delete gon.mail.error; log("e-posta gönderildi", MAIL_USER); }
+        catch (e) { gon.mail.error = e.message + " (" + hhmm(now) + ")"; log("e-posta gönderilemedi", e.message); }
+      }
+      if (yTest) gon.yedekTest = bil.yedekTest;
+      if (yDue) {
+        gon.yedek = ay;
+        if (subs.length && vapidSet) await push({ key: "yedek:" + ay, ttl: 86400, tag: "yedek", title: "Aylık yedek",
+          body: mailed ? "Yıllık planınızın Excel dosyası e-postanıza gönderildi." : "Yıllık planınızı Excel olarak kaydetme zamanı. Uygulamayı açıp \"Excel'i paylaş\"a dokunun." });
+      }
     }
     // takvim dosyası (yalnız değiştiyse yazılır)
     if (N.takvim && gon.vakit?.days) {

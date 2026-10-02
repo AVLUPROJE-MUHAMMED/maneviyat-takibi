@@ -163,6 +163,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <button class="iconbtn" id="next" aria-label="Sonraki gün">▶</button>
       <button class="iconbtn" id="today">Bugün</button>
     </div>
+    <div id="yedekbar" class="warn" hidden><span>Aylık yedek zamanı: yıllık planınızı Excel olarak kaydedin ya da kendinize gönderin.</span><button class="btn" id="yedekpay" type="button">Excel'i paylaş</button><button class="btn ghost" id="yedekgec" type="button">Bu ay geç</button></div>
     <div class="row small muted" style="justify-content:space-between;margin-top:6px"><span id="daysum"></span><span id="daypct" class="num"></span></div>
     <div class="progress"><i id="daybar" style="width:0"></i></div>
   </header>
@@ -300,6 +301,13 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <label class="chk"><input type="checkbox" id="n-atla"> "Kıldım" dediğim vakit için hatırlatma gönderme</label>
       <div class="row"><label class="chk"><input type="checkbox" id="n-pon"> Günün okuma programı</label><input id="n-psaat" type="time" style="width:auto"></div>
       <div class="row"><label class="chk"><input type="checkbox" id="n-oon"> Okumalarım bitmediyse hatırlat</label><input id="n-osaat" type="time" style="width:auto"></div>
+      <label class="chk"><input type="checkbox" id="n-yon"> Ayda bir yıllık planı Excel olarak yedekle</label>
+      <div class="fields">
+        <label class="f">Ayın kaçında<input id="n-ygun" type="number" min="1" max="28" inputmode="numeric"></label>
+        <label class="f">Saat<input id="n-ysaat" type="time"></label>
+      </div>
+      <div id="n-yedekbox" class="small muted"></div>
+      <div class="row"><button class="btn ghost" id="n-ydene" type="button">E-postama şimdi gönder (deneme)</button></div>
       <label class="chk"><input type="checkbox" id="n-takvim"> Uçak modunda da gelsin (vakit ve program uyarıları iPhone takviminden)</label>
       <div id="n-takvimbox" class="small muted" hidden></div>
       <div class="row"><button class="btn" id="ntfsave" type="button">Bildirim ayarlarını kaydet</button><span class="small muted" id="ntfmsg"></span></div>
@@ -347,7 +355,7 @@ const $=id=>document.getElementById(id);
 const BOOKS=[["Asa-yı Musa",238],["Lem'alar",456],["Mektubat",507],["Sözler",765],["Şualar",656],["Mesnevi-i Nuriye",235],["Tarihçe-i Hayat",680],["Barla Lahikası",348],["Kastamonu Lahikası",218],["Emirdağ Lahikası",485],["Sikke-i Tasdik-i Gaybi",231],["İşaratü'l-İ'caz",255],["İman ve Küfür Muvazeneleri",215],["Muhakemat",165]];
 function defaultNotify(){
   const all={sabah:1,ogle:1,ikindi:1,aksam:1,yatsi:1};
-  return {ilce:{il:"İSTANBUL",ad:"İSTANBUL",id:9541},giris:Object.assign({},all),once:Object.assign({},all),dk:30,atla:1,program:{on:1,saat:"07:30"},okuma:{on:1,saat:"21:00"}};
+  return {ilce:{il:"İSTANBUL",ad:"İSTANBUL",id:9541},giris:Object.assign({},all),once:Object.assign({},all),dk:30,atla:1,program:{on:1,saat:"07:30"},okuma:{on:1,saat:"21:00"},yedek:{on:1,gun:1,saat:"10:00"}};
 }
 function defaults(){
   return {v:2,seed:0,settings:{
@@ -382,8 +390,9 @@ function normalize(s){
     notify:Object.assign({},d.settings.notify,st.notify||{})
   },days:{}};
   const nt=out.settings.notify, dn=d.settings.notify;
-  for(const k of ["ilce","giris","once","program","okuma"]) nt[k]=Object.assign({},dn[k],(st.notify||{})[k]||{});
+  for(const k of ["ilce","giris","once","program","okuma","yedek"]) nt[k]=Object.assign({},dn[k],(st.notify||{})[k]||{});
   nt.dk=Math.max(1,Math.min(180,Number(nt.dk)||30));
+  nt.yedek.gun=Math.max(1,Math.min(28,Number(nt.yedek.gun)||1));
   if(st.su) out.settings.su=Number(st.su)||0;
   const r=out.settings.risale;
   if(!Array.isArray(r.books)||!r.books.length) r.books=d.settings.risale.books;
@@ -429,7 +438,7 @@ function queue(){ saveLocal(); if(!ref) return; clearTimeout(timer); timer=setTi
 function markDay(date){ if(S.days[date]) S.days[date].u=Date.now(); pendingDays[date]=clone(S.days[date]); queue(); if(window.__mtChanged) window.__mtChanged(); }
 function markSettings(){ S.settings.su=Date.now(); pendingSettings=true; queue(); if(window.__mtChanged) window.__mtChanged(); }
 /* başka bir eşitleme katmanı (telefon uygulaması) için durum erişimi */
-window.__mt={saveSettings:fn=>{fn(S.settings);markSettings();render()},setVakit:v=>{VT=v||{};render()},get:()=>S,set:st=>{S=normalize(st);saveLocal();if(!$("settings").open)fillSettings();render();},normalize,setSync:(on,t)=>setSync(on,t)};
+window.__mt={saveSettings:fn=>{fn(S.settings);markSettings();render();if(typeof yedekCheck==="function")yedekCheck()},setVakit:v=>{VT=v||{};render()},get:()=>S,set:st=>{S=normalize(st);saveLocal();if(!$("settings").open)fillSettings();render();},normalize,setSync:(on,t)=>setSync(on,t)};
 function markFull(){ fullPending=true; queue(); }
 function flush(){
   if(!ref) return;
@@ -780,9 +789,10 @@ function tableData(){
 }
 async function deliver(name,blob,type){
   const file=new File([blob],name,{type});
-  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:name}); return true; } }catch(e){ if(e&&e.name==="AbortError") return false; }
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+  return true;
 }
 /* küçük zip yazıcı (sıkıştırmasız) */
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -869,6 +879,18 @@ async function buildPdf(){
 $("xlsbtn").addEventListener("click",async()=>{try{await deliver("cennet-yolu-plan-"+todayIso()+".xlsx",buildXlsx(),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}catch(e){toast("Excel hazırlanamadı")}});
 $("pdfbtn").addEventListener("click",async()=>{const b=$("pdfbtn");b.disabled=true;b.textContent="PDF hazırlanıyor…";try{await deliver("cennet-yolu-plan-"+todayIso()+".pdf",await buildPdf(),"application/pdf")}catch(e){toast("PDF hazırlanamadı")}finally{b.disabled=false;b.textContent="PDF indir"}});
 
+window.__mtXlsx=buildXlsx;
+/* aylık yedek: ayın seçilen gününden itibaren, o ay kaydedilmediyse üstte "Excel'i paylaş" çıkar */
+const XLS="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const ayKey=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)};
+const ayDone=v=>{try{if(v)localStorage.setItem("mt-yedek-ay",v);return localStorage.getItem("mt-yedek-ay")||""}catch(e){return ""}};
+function yedekCheck(){
+  const Y=S.settings.notify.yedek, d=new Date();
+  $("yedekbar").hidden=!(Y.on&&iso(d)>=PROGRAM_START&&d.getDate()>=Y.gun&&ayDone()!==ayKey());
+}
+$("yedekpay").addEventListener("click",async()=>{try{if(await deliver("cennet-yolu-plan-"+todayIso()+".xlsx",buildXlsx(),XLS)){ayDone(ayKey());yedekCheck()}}catch(e){toast("Excel hazırlanamadı")}});
+$("yedekgec").addEventListener("click",()=>{ayDone(ayKey());yedekCheck()});
+
 /* ---------- yedek ---------- */
 const backupText=()=>JSON.stringify({uygulama:"CENNET YOLU",tarih:new Date().toISOString(),veri:S});
 $("exportbtn").addEventListener("click",()=>{
@@ -907,10 +929,10 @@ $("refreshbtn").addEventListener("click",async()=>{
   finally{ b.disabled=false; b.textContent="⟳"; }
 });
 $("opensettings").addEventListener("click",()=>{const d=$("settings");d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){render()}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();yedekCheck()}});
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
 
-fillSettings(); render(); initCloud();
+fillSettings(); render(); yedekCheck(); initCloud();
 })();
 
 </script>
@@ -1026,11 +1048,12 @@ async function notifySync(g){
   if(g.owner&&g.owner.login&&cfg.owner!==g.owner.login){ cfg.owner=g.owner.login; saveCfg(); }
   takvimVar=!!(g.files&&g.files["takvim.ics"]);
   const gon=await fileJSON(g,GFILE);
-  if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[]};
+  if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[],mail:gon.mail||null};
     try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
     showVakit(); }
   renderNotify(false);
   locate(false);
+  upXlsx(false).catch(()=>{});
   if(pushBusy) return;
   const cur=(await fileJSON(g,BFILE))||{}; cur.subs=cur.subs||{};
   if(cfg.push&&cur.subs[cfg.dev]&&cur.vapid&&!cfg.vapid){ cfg.vapid=cur.vapid; saveCfg(); }
@@ -1060,6 +1083,30 @@ async function editBil(fn){
   await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[BFILE]:{content:JSON.stringify(bil)}}})});
 }
 const nmsg=t=>{$("ntfmsg").textContent=t};
+/* aylık e-posta için yıllık planın Excel'i günde bir kez not'a konur; zamanlayıcı oradan e-postaya ekler */
+const XFILE="yedek.xlsx.b64";
+async function upXlsx(force){
+  const N=window.__mt.get().settings.notify, td=new Date().toDateString();
+  if(!cfg.gistId||!window.__mtXlsx||(!N.yedek.on&&!force)||(!force&&cfg.xup===td)) return;
+  const url=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result));r.onerror=no;r.readAsDataURL(window.__mtXlsx())});
+  await gh("/gists/"+cfg.gistId,{method:"PATCH",body:JSON.stringify({files:{[XFILE]:{content:url.slice(url.indexOf(",")+1)}}})});
+  cfg.xup=td; saveCfg();
+}
+const tarihTR=ms=>new Date(ms).toLocaleString("tr-TR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
+function renderYedek(){
+  const Y=window.__mt.get().settings.notify.yedek, B=$("n-yedekbox"), M=server&&server.mail;
+  const when="Her ayın "+Y.gun+". günü "+Y.saat+"'te";
+  if(!Y.on){ B.textContent="Aylık yedek kapalı. Yıllık planı istediğiniz zaman tablonun altındaki Excel indir düğmesiyle kaydedebilirsiniz."; $("n-ydene").hidden=true; return; }
+  $("n-ydene").hidden=!(M&&M.kurulu);
+  if(M&&M.kurulu){
+    B.textContent=when+" yıllık planın Excel dosyası "+(M.to||"e-postanıza")+" adresine gönderilir, telefonunuza da bildirim gelir."+(M.last?" Son gönderim: "+tarihTR(M.last)+".":"")+(M.error?" Son hata: "+M.error:"");
+  }else{
+    B.innerHTML=when+" uygulamanın üstünde <b>Excel'i paylaş</b> düğmesi çıkar ve telefonunuza bildirim gelir; paylaş menüsünden Gmail'i seçebilirsiniz. "+
+      "Dosyanın e-postanıza <b>kendiliğinden</b> gitmesi için bir kez kurulum gerekir: "+
+      "1) Google hesabınızda <a href=\"https://myaccount.google.com/apppasswords\" target=\"_blank\" rel=\"noopener\">Uygulama şifreleri</a> sayfasında \"Cennet Yolu\" adıyla bir şifre oluşturun (iki adımlı doğrulama açık olmalı). "+
+      "2) GitHub'da <a href=\"https://github.com/AVLUPROJE-MUHAMMED/maneviyat-takibi/settings/secrets/actions/new\" target=\"_blank\" rel=\"noopener\">bu sayfada</a> Name kutusuna <b>GMAIL_USER</b>, Secret kutusuna Gmail adresinizi yazıp kaydedin; aynı sayfada bir kez daha <b>GMAIL_PASS</b> adıyla Google'ın verdiği 16 harfli şifreyi ekleyin.";
+  }
+}
 async function pushOn(){
   if(!cfg.token){ nmsg("Önce yukarıdaki eşitlemeyi açın; bildirimler oradaki gizli not üzerinden çalışır."); return; }
   if(!pushOK()){ nmsg(/iPhone|iPad/.test(navigator.userAgent)?"iPhone'da bildirim için uygulamayı Safari'den ana ekrana ekleyip ana ekrandaki simgeden açın (iOS 16.4 ve üstü).":"Bu tarayıcı bildirim desteklemiyor."); return; }
@@ -1118,6 +1165,7 @@ async function renderNotify(form){
       TB.innerHTML='Takvim hazır. iPhone\'da bir kez abone olun: <a href="'+url+'">Takvime abone ol</a>. Açılan ekranda <b>Abone Ol</b>\'a basın, sonra <b>"Uyarıları Kaldır"</b> seçeneğini <b>kapalı</b> bırakıp <b>Ekle</b>\'ye basın. Takvim kendiliğinden güncellenir; uyarılar internet olmadan da çalar. Takvim açıkken vakit ve program bildirimleri ikinci kez internetten gelmez, "okumalarım bitmedi" hatırlatması internetten gelmeye devam eder.';
     }else TB.textContent="Takvim hazırlanıyor; zamanlayıcı birkaç dakika içinde oluşturur, sonra burada abone olma bağlantısı çıkar.";
   }
+  renderYedek();
   if(!form) return;
   const N=window.__mt.get().settings.notify;
   await loadIlce();
@@ -1136,6 +1184,7 @@ async function renderNotify(form){
   $("n-oto").checked=!!N.oto; $("n-takvim").checked=!!N.takvim;
   $("n-pon").checked=!!N.program.on; $("n-psaat").value=N.program.saat;
   $("n-oon").checked=!!N.okuma.on; $("n-osaat").value=N.okuma.saat;
+  $("n-yon").checked=!!N.yedek.on; $("n-ygun").value=N.yedek.gun; $("n-ysaat").value=N.yedek.saat;
 }
 /* konumdan ilçe: telefonun konumu -> adres (il, ilçe) -> Diyanet ilçe listesinde eşleşen ilçe */
 const norm=t=>String(t||"").toLocaleUpperCase("tr").replace(/Ç/g,"C").replace(/Ğ/g,"G").replace(/İ/g,"I").replace(/Ö/g,"O").replace(/Ş/g,"S").replace(/Ü/g,"U").replace(/\b(ILI|ILCESI|MERKEZ|PROVINCE)\b/g,"").replace(/[^A-Z]/g,"");
@@ -1191,6 +1240,7 @@ $("ntfsave").addEventListener("click",()=>{
     const hm=v=>/^\d\d:\d\d$/.test(v)?v:null;
     N.program={on:$("n-pon").checked?1:0,saat:hm($("n-psaat").value)||N.program.saat};
     N.okuma={on:$("n-oon").checked?1:0,saat:hm($("n-osaat").value)||N.okuma.saat};
+    N.yedek={on:$("n-yon").checked?1:0,gun:Math.max(1,Math.min(28,parseInt($("n-ygun").value,10)||1)),saat:hm($("n-ysaat").value)||N.yedek.saat};
   });
   showVakit(); renderNotify(false);
   nmsg(cfg.token?"Kaydedildi; zamanlayıcı birkaç dakika içinde yeni ayarlarla çalışır.":"Kaydedildi. Bildirimlerin gelmesi için eşitlemeyi açın.");
@@ -1198,6 +1248,13 @@ $("ntfsave").addEventListener("click",()=>{
 $("ntfon").addEventListener("click",pushOn);
 $("ntfoff").addEventListener("click",pushOff);
 $("ntftest").addEventListener("click",pushTest);
+$("n-ydene").addEventListener("click",async()=>{
+  if(!cfg.token){ nmsg("Önce eşitlemeyi açın."); return; }
+  if(!navigator.onLine){ nmsg("İnternet yok."); return; }
+  nmsg("Excel hazırlanıyor…");
+  try{ await upXlsx(true); await editBil(bil=>{bil.yedekTest=Date.now()}); nmsg("Gönderildi; birkaç dakika içinde e-postanıza gelir."); }
+  catch(e){ nmsg("Gönderilemedi, internet bağlantısını kontrol edin."); }
+});
 $("settings").addEventListener("toggle",()=>{if($("settings").open) renderNotify(true)});
 renderNotify(true);
 showVakit();
