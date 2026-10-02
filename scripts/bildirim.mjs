@@ -98,19 +98,19 @@ function events(state, bil, vakit, now) {
       const end = ef === "imsak+1" ? (T1 ? at(addDays(D, 1), T1.imsak, T1.gmt) : null) : at(D, T[ef], T.gmt);
       const marked = n[k] === "k" || n[k] === "x";
       if (N.takvim) continue;
-      if (N.giris[k] && !marked) out.push({ key: `${D}:${k}:giris`, at: start, late: 20 * 60000, ttl: 1800, title: `${name} vakti girdi`, body: `${name} vakti ${T[sf]}${end ? ", çıkış " + hhmm(end) : ""}.`, tag: "vakit-" + k });
+      if (N.giris[k] && !marked) out.push({ key: `${D}:${k}:giris`, at: start, late: 20 * 60000, ttl: 1800, title: `${name} vakti girdi`, body: `${name} namazını kılmayı unutma. Vakit ${T[sf]}${end ? " – " + hhmm(end) : ""}.`, tag: "vakit-" + k });
       if (end && N.once[k] && !(N.atla && n[k] === "k")) {
-        out.push({ key: `${D}:${k}:once`, at: end - N.dk * 60000, late: N.dk * 60000, ttl: N.dk * 60, title: `${name} vakti çıkıyor`, body: `${name} vaktinin çıkmasına ${Math.max(1, Math.round((end - Math.max(now, end - N.dk * 60000)) / 60000))} dakika kaldı (${hhmm(end)}). Kıldıysanız uygulamada işaretleyin.`, tag: "vakit-" + k });
+        out.push({ key: `${D}:${k}:once`, at: end - N.dk * 60000, late: N.dk * 60000, ttl: N.dk * 60, title: `${name} namazını kıldın mı?`, body: `${name} vaktinin çıkmasına ${Math.max(1, Math.round((end - Math.max(now, end - N.dk * 60000)) / 60000))} dakika kaldı (${hhmm(end)}). Kıldıysan uygulamada "Kıldım"a dokun.`, tag: "vakit-" + k });
       }
     }
     const P = plan[D];
     if (N.program.on && P && D >= START && !N.takvim) {
-      out.push({ key: `${D}:program`, at: at(D, N.program.saat), ttl: 6 * 3600, title: "Bugünkü okumalarım", body: [P.r && "Risale: " + P.r, P.qa && "Kur'an: " + P.qa, P.qm && "Meal: " + P.qm, "Sekine", P.c && "Cevşen: " + P.c].filter(Boolean).join(" · "), tag: "program" });
+      out.push({ key: `${D}:program`, at: at(D, N.program.saat), ttl: 6 * 3600, title: "Bugünkü okumaların", body: [P.r && "Risale: " + P.r, P.qa && "Kur'an: " + P.qa, P.qm && "Meal: " + P.qm, "Sekine", P.c && "Cevşen: " + P.c].filter(Boolean).join(" · "), tag: "program" });
     }
     if (N.okuma.on && D >= START) {
       const P2 = P || {};
       const left = [!(day.r > 0) && "Risale" + (P2.r ? " (" + P2.r + ")" : ""), !(day.qa > 0) && "Kur'an" + (P2.qa ? " (" + P2.qa + ")" : ""), !(day.qm > 0) && "Meal" + (P2.qm ? " (" + P2.qm + ")" : ""), !(day.sk > 0) && "Sekine", !(day.c > 0) && "Cevşen" + (P2.c ? " (" + P2.c + ")" : "")].filter(Boolean);
-      if (left.length) out.push({ key: `${D}:okuma`, at: at(D, N.okuma.saat), ttl: 3 * 3600, title: "Okumalarım bitmedi", body: "Kalan: " + left.join(" · "), tag: "okuma" });
+      if (left.length) out.push({ key: `${D}:okuma`, at: at(D, N.okuma.saat), ttl: 3 * 3600, title: "Okumalarını yaptın mı?", body: "Henüz işaretlenmeyen: " + left.join(" · "), tag: "okuma" });
     }
   }
   if (bil?.test) out.push({ key: "test:" + bil.test, at: bil.test, ttl: 3600, title: "CENNET YOLU", body: "Deneme: zamanlayıcıdan gelen bildirim çalışıyor.", tag: "deneme", always: true });
@@ -133,17 +133,17 @@ function buildIcs(N, vakit, plan, now) {
       if (!N.giris[k] && !N.once[k]) continue;
       const start = at(D, T[sf], T.gmt);
       const end = ef === "imsak+1" ? (T1 ? at(addDays(D, 1), T1.imsak, T1.gmt) : start + 6 * 3600000) : at(D, T[ef], T.gmt);
-      const al = [];
-      if (N.giris[k]) al.push(alarm("TRIGGER;RELATED=START:PT0M", `${name} vakti girdi (${T[sf]})`));
-      if (N.once[k]) al.push(alarm(`TRIGGER;RELATED=END:-PT${N.dk}M`, `${name} vaktinin çıkmasına ${N.dk} dakika kaldı (${hhmm(end)})`));
-      ev(`${D}-${k}`, start, end, `${name} vakti`, `${name} ${T[sf]} – ${hhmm(end)} · ${N.ilce.ad}`, al);
+      // iPhone takvim uyarısında yalnız olayın adı görünür; bu yüzden her uyarı ayrı, adı açıklayıcı bir olay
+      const desc = `${name} vakti ${T[sf]} – ${hhmm(end)} · ${N.ilce.ad}`;
+      if (N.giris[k]) { const t = `${name} vakti girdi: ${name} namazını kılmayı unutma`; ev(`${D}-${k}-giris`, start, start + 5 * 60000, t, desc, [alarm("TRIGGER;RELATED=START:PT0M", t)]); }
+      if (N.once[k]) { const s = end - N.dk * 60000, t = `${name} namazını kıldın mı? Vaktin çıkmasına ${N.dk} dk (${hhmm(end)})`; ev(`${D}-${k}-once`, s, s + 5 * 60000, t, desc, [alarm("TRIGGER;RELATED=START:PT0M", t)]); }
     }
     if (D < START) continue;
     const P = plan[D];
     if (N.program.on) {
       const s = at(D, N.program.saat);
       const txt = P ? [P.r && "Risale: " + P.r, P.qa && "Kur'an: " + P.qa, P.qm && "Meal: " + P.qm, "Sekine", P.c && "Cevşen: " + P.c].filter(Boolean).join(" · ") : "Risale, Kur'an, meal, Sekine ve Cevşen";
-      ev(`${D}-program`, s, s + 15 * 60000, "Bugünkü okumalarım", txt, [alarm("TRIGGER;RELATED=START:PT0M", txt)]);
+      ev(`${D}-program`, s, s + 15 * 60000, "Bugünkü okumaların: " + txt, txt, [alarm("TRIGGER;RELATED=START:PT0M", "Bugünkü okumaların: " + txt)]);
     }
   }
   L.push("END:VCALENDAR");
