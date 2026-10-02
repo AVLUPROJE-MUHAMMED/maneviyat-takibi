@@ -919,14 +919,18 @@ async function buildPdf(){
 $("xlsbtn").addEventListener("click",async()=>{try{await deliver("cennet-yolu-plan-"+todayIso()+".xlsx",buildXlsx(),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}catch(e){toast("Excel hazırlanamadı")}});
 $("pdfbtn").addEventListener("click",async()=>{const b=$("pdfbtn");b.disabled=true;b.textContent="PDF hazırlanıyor…";try{await deliver("cennet-yolu-plan-"+todayIso()+".pdf",await buildPdf(),"application/pdf")}catch(e){toast("PDF hazırlanamadı")}finally{b.disabled=false;b.textContent="PDF indir"}});
 
-window.__mtXlsx=buildXlsx;
+window.__mtXlsx=buildXlsx; window.__mtYedek=()=>yedekCheck();
 /* aylık yedek: ayın seçilen gününden itibaren, o ay kaydedilmediyse üstte "Excel'i paylaş" çıkar */
 const XLS="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const ayKey=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)};
 const ayDone=v=>{try{if(v)localStorage.setItem("mt-yedek-ay",v);return localStorage.getItem("mt-yedek-ay")||""}catch(e){return ""}};
 function yedekCheck(){
-  const Y=S.settings.notify.yedek, d=new Date();
-  $("yedekbar").hidden=!(Y.on&&iso(d)>=PROGRAM_START&&d.getDate()>=Y.gun&&ayDone()!==ayKey());
+  const Y=S.settings.notify.yedek, d=new Date(), hm=pad(d.getHours())+":"+pad(d.getMinutes());
+  /* e-posta kuruluysa tam yedek kendiliğinden gider, uyarıya gerek yok */
+  let mail=false; try{const v=JSON.parse(localStorage.getItem("mt-vakit")||"null");mail=!!(v&&v.mail&&v.mail.kurulu)}catch(e){}
+  /* programın başladığı ay atlanır (ilk yedek Kasım'da); seçilen gün ve saatten önce çıkmaz */
+  const due=d.getDate()>Y.gun||(d.getDate()===Y.gun&&hm>=(Y.saat||"00:00"));
+  $("yedekbar").hidden=!(Y.on&&!mail&&ayKey()>PROGRAM_START.slice(0,7)&&due&&ayDone()!==ayKey());
 }
 $("yedekpay").addEventListener("click",async()=>{try{if(await deliver("cennet-yolu-plan-"+todayIso()+".xlsx",buildXlsx(),XLS)){ayDone(ayKey());yedekCheck()}}catch(e){toast("Excel hazırlanamadı")}});
 $("yedekgec").addEventListener("click",()=>{ayDone(ayKey());yedekCheck()});
@@ -1089,7 +1093,7 @@ async function notifySync(g){
   takvimVar=!!(g.files&&g.files["takvim.ics"]);
   const gon=await fileJSON(g,GFILE);
   if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[],mail:gon.mail||null};
-    try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
+    try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){} if(window.__mtYedek)window.__mtYedek();
     showVakit(); }
   renderNotify(false);
   locate(false);
