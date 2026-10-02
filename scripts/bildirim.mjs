@@ -26,13 +26,17 @@ async function fileJSON(g, name) {
   let t = f.content; if (f.truncated && f.raw_url) t = await (await fetch(f.raw_url, { headers: { Authorization: "Bearer " + TOKEN } })).text();
   try { return JSON.parse(t); } catch { return null; }
 }
+// aynı adda birden çok not oluşmuşsa uygulama ile aynı seçimi yap: en eski olan
 async function findGist() {
+  const all = [];
   for (let p = 1; p <= 5; p++) {
     const l = await gh("/gists?per_page=100&page=" + p);
-    const g = l.find(x => x.description === DESC && x.files && x.files[FILE]); if (g) return g.id;
+    all.push(...l.filter(x => x.description === DESC && x.files && x.files[FILE]));
     if (l.length < 100) break;
   }
-  return null;
+  all.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+  if (all.length) log("not sayısı", all.length, "seçilen", all[0].id.slice(0, 6), all.map(g => Object.keys(g.files).join("+")).join(" | "));
+  return all.length ? all[0].id : null;
 }
 
 /* ---- Diyanet vakitleri: önce ezanvakti (Diyanet verisi, 30 gün), olmazsa Diyanet'in kendi sitesi (haftalık tablo) ---- */

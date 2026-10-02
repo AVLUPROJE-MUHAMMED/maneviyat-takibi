@@ -819,14 +819,16 @@ async function gh(path,opts={}){
   if(!res.ok) throw {code:"http",status:res.status};
   return res.json();
 }
+/* aynı adda birden çok not oluşmuşsa (iki cihaz aynı anda başlatınca) hepsi en eskisinde buluşur */
 async function findGist(){
+  const all=[];
   for(let page=1;page<=5;page++){
     const list=await gh("/gists?per_page=100&page="+page);
-    const g=list.find(x=>x.description===DESC&&x.files&&x.files[FILE]);
-    if(g) return g.id;
+    all.push(...list.filter(x=>x.description===DESC&&x.files&&x.files[FILE]));
     if(list.length<100) break;
   }
-  return null;
+  all.sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)));
+  return all.length?all[0].id:null;
 }
 async function fileJSON(g,name){
   const f=g&&g.files&&g.files[name]; if(!f) return null;
@@ -855,7 +857,13 @@ async function sync(){
   if(!navigator.onLine){ status(false,"İnternet yok, bu cihazda saklanıyor"); return; }
   busy=true; status(false,"Eşitleniyor…");
   try{
-    if(!cfg.gistId){ cfg.gistId=await findGist(); saveCfg(); }
+    if(!cfg.gistId||Date.now()-(cfg.chk||0)>10*60000){
+      const id=await findGist(); cfg.chk=Date.now();
+      if(id&&cfg.gistId&&id!==cfg.gistId){ // başka bir nota geçerken bu cihazın bildirim anahtarını taşı
+        try{const ob=await fileJSON(await gh("/gists/"+cfg.gistId),BFILE); if(ob&&ob.vapid) cfg.vapid=ob.vapid;}catch(e){}
+      }
+      if(id) cfg.gistId=id; saveCfg();
+    }
     const local=window.__mt.get();
     if(!cfg.gistId){
       const g=await gh("/gists",{method:"POST",body:JSON.stringify({description:DESC,public:false,files:{[FILE]:{content:JSON.stringify(local)}}})});
@@ -904,8 +912,13 @@ async function notifySync(g){
   bil.subs=bil.subs||{};
   const plan=window.__mtPlan||{}; if(Object.keys(plan).length) bil.plan=plan;
   if(server&&server.gone) for(const [id,sb] of Object.entries(bil.subs)) if(server.gone.includes(sb.endpoint)) delete bil.subs[id];
+  if(cfg.push&&bil.subs[cfg.dev]&&bil.vapid&&!cfg.vapid){ cfg.vapid=bil.vapid; saveCfg(); }
+  if(cfg.push&&cfg.vapid){
+    if(!bil.vapid) bil.vapid=cfg.vapid;
+    else if(bil.vapid.pub!==cfg.vapid.pub){ cfg.push=false; delete bil.subs[cfg.dev]; saveCfg(); } // farklı anahtar: bildirimleri yeniden açmak gerekir
+  }
   if(cfg.push&&cfg.dev&&pushOK()){
-    try{const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription();
+    try{const reg=await Promise.race([navigator.serviceWorker.ready,new Promise((_,no)=>setTimeout(no,3000))]); const sub=await reg.pushManager.getSubscription();
       if(sub&&(!bil.subs[cfg.dev]||bil.subs[cfg.dev].endpoint!==sub.endpoint)) bil.subs[cfg.dev]=Object.assign(sub.toJSON(),{ad:deviceName(),t:Date.now()});
     }catch(e){}
   }
@@ -935,6 +948,7 @@ async function pushOn(){
       cfg.dev=cfg.dev||Math.random().toString(36).slice(2,10);
       bil.subs[cfg.dev]=Object.assign(sub.toJSON(),{ad:deviceName(),t:Date.now()});
       const plan=window.__mtPlan||{}; if(Object.keys(plan).length) bil.plan=plan;
+      cfg.vapid=bil.vapid;
     });
     cfg.push=true; saveCfg(); nmsg("Bildirimler bu cihazda açık.");
   }catch(e){ nmsg("Açılamadı: "+(e&&e.message||e&&e.code||"bilinmeyen hata")); }
