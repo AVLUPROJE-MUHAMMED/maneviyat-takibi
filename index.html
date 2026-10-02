@@ -166,6 +166,9 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
     <button class="linkbtn small" id="lockforgot" type="button" hidden>Şifremi unuttum</button>
   </div>
 </div>
+<script>/* giriş gerekmiyorsa kilit ekranı hiç görünmesin (açılışta bir an yanıp sönmesin) */
+try{var c=JSON.parse(localStorage.getItem("mt-sync")||"{}"),st=JSON.parse(localStorage.getItem("maneviyat-v1")||"{}"),k=st&&st.settings&&st.settings.kilit;
+if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("off");}catch(e){}</script>
 <style>
 #lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px}
 #lock.off{display:none}
@@ -203,7 +206,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <section class="card" aria-labelledby="h-oku">
         <div class="cardhead"><h2 id="h-oku">Günlük okumalar</h2></div>
         <div id="tasks"></div>
-        <div class="cardhead" style="margin-top:14px"><h3 id="h-cev" style="margin:0;font-size:1.05rem">Büyük Cevşen</h3><span class="small muted">Haftada bir hatim</span></div>
+        <div class="cardhead" style="margin-top:0;padding-top:10px;border-top:1px solid var(--line)"><h3 id="h-cev" style="margin:0;font-size:1.05rem">Büyük Cevşen</h3><span class="small muted">Haftada bir hatim</span></div>
         <div class="task" style="border:0;padding-top:0">
           <div class="info"><div class="t" id="cevpart"></div><div class="small muted" id="cevsub"></div></div>
           <button class="check" id="cevbtn" aria-label="Bugünkü cevşen bölümünü okudum">✓</button>
@@ -961,9 +964,9 @@ $("next").addEventListener("click",()=>{cur=addDays(cur,1);render()});
 $("today").addEventListener("click",()=>{cur=todayIso();render()});
 $("cevbtn").addEventListener("click",()=>toggleRead("c",1));
 $("refreshbtn").addEventListener("click",async()=>{
-  const b=$("refreshbtn"); b.disabled=true; b.textContent="…";
+  const b=$("refreshbtn"); b.disabled=true; b.style.opacity=".45";
   try{ if(window.__mtRefresh) await window.__mtRefresh(); else location.reload(); }
-  finally{ b.disabled=false; b.textContent="⟳"; }
+  finally{ b.disabled=false; b.style.opacity=""; }
 });
 $("opensettings").addEventListener("click",()=>{const d=$("settings");d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();yedekCheck()}});
@@ -1260,8 +1263,15 @@ window.__mtRefresh=async()=>{
   if(!navigator.onLine){ status(false,"İnternet yok; bu cihazdaki kayıtlar ve vakitlerle çalışıyor"); return; }
   try{ if(window.__mt.get().settings.notify.oto) await locate(true); }catch(e){}
   try{ await sync(); }catch(e){}
-  try{ const reg=await navigator.serviceWorker.getRegistration(); if(reg) await reg.update(); }catch(e){}
-  location.reload();
+  // sayfayı yalnız yeni sürüm varsa yeniden yükle (yeniden yükleme yazıların bir an büyüyüp küçülmesine yol açıyor)
+  let yeni=false;
+  try{
+    const txt=await (await fetch("sw.js",{cache:"no-store"})).text(), m=txt.match(/CACHE="([^"]+)"/);
+    const ks=await caches.keys(); if(m&&ks.length&&!ks.includes(m[1])) yeni=true;
+    const reg=await navigator.serviceWorker.getRegistration(); if(reg) await reg.update();
+  }catch(e){}
+  if(yeni){ location.reload(); return; }
+  window.__mt.set(window.__mt.get());
 };
 $("n-oto").addEventListener("change",()=>{window.__mt.saveSettings(s=>{s.notify.oto=$("n-oto").checked?1:0}); if($("n-oto").checked) locate(true);});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden) locate(false)});
