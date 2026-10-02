@@ -151,6 +151,27 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
 
 </head>
 <body>
+<div id="lock" role="dialog" aria-modal="true" aria-labelledby="lockt">
+  <div class="lockbox">
+    <img src="icon-180.png" alt="" width="84" height="84">
+    <h2 id="lockt">CENNET YOLU</h2>
+    <p class="small muted" id="lockinfo">Yükleniyor…</p>
+    <input id="lockin" type="password" autocomplete="current-password" hidden>
+    <button class="btn" id="lockbtn" type="button" hidden>Giriş</button>
+    <p class="small" id="lockerr" style="color:var(--no);min-height:1.2em;margin:0"></p>
+    <button class="linkbtn small" id="lockforgot" type="button" hidden>Şifremi unuttum</button>
+  </div>
+</div>
+<style>
+#lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+#lock.off{display:none}
+.lockbox{width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.lockbox img{border-radius:20px}
+.lockbox h2{margin:0;font-family:var(--display,inherit);font-size:1.6rem}
+.lockbox input{width:100%;font-size:1.1rem;text-align:center}
+.lockbox .btn{width:100%}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;padding:6px}
+</style>
 <div class="wrap">
   <header class="top">
     <div class="toprow">
@@ -264,6 +285,16 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
       <div class="row" style="margin-top:14px"><button class="btn" type="submit">Ayarları kaydet</button></div>
     </form>
 
+    <fieldset id="guvbox">
+      <legend>Güvenlik</legend>
+      <p class="small muted" style="margin:0">Uygulama yalnız eşitleme anahtarınızla açılır; anahtarı bilmeyen kişi giriş ekranını geçemez. İsterseniz telefonda her açılışta sorulacak bir şifre de koyun.</p>
+      <label class="chk"><input type="checkbox" id="g-on"> Uygulama açılırken şifre sor</label>
+      <div class="fields">
+        <label class="f">Yeni şifre<input id="g-p1" type="password" autocomplete="new-password"></label>
+        <label class="f">Şifre (tekrar)<input id="g-p2" type="password" autocomplete="new-password"></label>
+      </div>
+      <div class="row"><button class="btn" id="g-save" type="button">Kaydet</button><button class="btn ghost" id="g-lock" type="button">Şimdi kilitle</button><span class="small muted" id="g-msg"></span></div>
+    </fieldset>
     <fieldset>
       <legend>Cihazlar arası eşitleme</legend>
       <div id="syncoff">
@@ -398,6 +429,7 @@ function normalize(s){
   nt.dk=Math.max(1,Math.min(180,Number(nt.dk)||30));
   nt.yedek.gun=Math.max(1,Math.min(28,Number(nt.yedek.gun)||1));
   if(st.su) out.settings.su=Number(st.su)||0;
+  if(st.kilit&&st.kilit.hash) out.settings.kilit={on:st.kilit.on?1:0,salt:String(st.kilit.salt||""),hash:String(st.kilit.hash)};
   const r=out.settings.risale;
   if(!Array.isArray(r.books)||!r.books.length) r.books=d.settings.risale.books;
   r.books=r.books.map(b=>({name:String(b.name||"Kitap"),pages:Math.max(1,Number(b.pages)||1)}));
@@ -1283,12 +1315,76 @@ $("syncstart").addEventListener("click",async()=>{
   renderPanel(); await sync();
 });
 $("syncnow").addEventListener("click",sync);
-$("syncstop").addEventListener("click",()=>{ cfg={}; saveCfg(); renderPanel(); status(false,"Bu cihazda saklanıyor"); });
+$("syncstop").addEventListener("click",()=>{ cfg={}; saveCfg(); renderPanel(); status(false,"Bu cihazda saklanıyor"); checkLock(); });
+
+/* ---------- giriş ekranı ----------
+   Bu cihazda eşitleme anahtarı yoksa uygulama açılmaz (linki bilen başkası içini göremez).
+   Ayarlar > Güvenlik'te şifre konduysa her açılışta ve 5 dakikadan uzun arka planda kaldıktan sonra sorulur. */
+const L={box:$("lock"),info:$("lockinfo"),inp:$("lockin"),btn:$("lockbtn"),err:$("lockerr"),forgot:$("lockforgot")};
+let lockMode="", hiddenAt=0;
+const sha=async t=>b64u(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)));
+const kilit=()=>(window.__mt.get().settings.kilit)||null;
+function showLock(mode){
+  lockMode=mode; L.box.classList.remove("off"); L.err.textContent=""; L.inp.value=""; L.inp.hidden=false; L.btn.hidden=false;
+  if(mode==="key"){ L.info.innerHTML="Bu cihazda ilk giriş. GitHub'da oluşturduğunuz, <b>ghp_</b> ile başlayan eşitleme anahtarınızı yapıştırın."; L.inp.placeholder="ghp_…"; L.inp.type="password"; L.forgot.hidden=true; }
+  else if(mode==="reset"){ L.info.innerHTML="Şifrenizi unuttuysanız <b>ghp_</b> ile başlayan eşitleme anahtarınızı yapıştırın."; L.inp.placeholder="ghp_…"; L.forgot.hidden=false; L.forgot.textContent="Şifreyle gir"; }
+  else { L.info.textContent="Şifrenizi girin."; L.inp.placeholder="Şifre"; L.forgot.hidden=false; L.forgot.textContent="Şifremi unuttum"; }
+  setTimeout(()=>{try{L.inp.focus()}catch(e){}},100);
+}
+function unlock(){ lockMode=""; L.box.classList.add("off"); L.inp.value=""; }
+function checkLock(){
+  if(!cfg.token) return showLock("key");
+  const K=kilit(); if(K&&K.on&&K.hash) return showLock("pin");
+  unlock();
+}
+async function lockSubmit(){
+  const v=L.inp.value.trim(); if(!v) return;
+  L.err.textContent=""; L.btn.disabled=true;
+  try{
+    if(lockMode==="pin"){
+      const K=kilit();
+      if(K&&await sha(K.salt+v)===K.hash) unlock(); else L.err.textContent="Şifre yanlış.";
+    }else if(lockMode==="reset"){
+      if(v===cfg.token){ unlock(); window.__mt.saveSettings(s=>{delete s.kilit}); toastMsg("Şifre kaldırıldı; Ayarlar > Güvenlik'ten yenisini koyabilirsiniz."); }
+      else L.err.textContent="Anahtar bu cihazdakiyle aynı değil.";
+    }else{
+      if(!navigator.onLine){ L.err.textContent="İlk giriş için internet gerekiyor."; return; }
+      L.info.textContent="Anahtar kontrol ediliyor…";
+      cfg={token:v};
+      try{ await gh("/user"); }catch(e){ cfg={}; saveCfg(); showLock("key"); L.err.textContent=e&&e.code==="auth"?"Anahtar geçersiz.":"Bağlanılamadı, yeniden deneyin."; return; }
+      saveCfg(); renderPanel(); unlock(); await sync(); renderNotify(true);
+    }
+  }finally{ L.btn.disabled=false; }
+}
+const toastMsg=t=>{$("g-msg").textContent=t};
+L.btn.addEventListener("click",lockSubmit);
+L.inp.addEventListener("keydown",e=>{if(e.key==="Enter") lockSubmit()});
+L.forgot.addEventListener("click",()=>showLock(lockMode==="reset"?"pin":"reset"));
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){ hiddenAt=Date.now(); return; }
+  const K=kilit(); if(cfg.token&&K&&K.on&&K.hash&&hiddenAt&&Date.now()-hiddenAt>5*60000&&!lockMode) showLock("pin");
+});
+function fillGuv(){ const K=kilit(); $("g-on").checked=!!(K&&K.on); $("g-p1").value=""; $("g-p2").value=""; $("g-lock").hidden=!(K&&K.on); }
+$("g-save").addEventListener("click",async()=>{
+  const on=$("g-on").checked, p1=$("g-p1").value, p2=$("g-p2").value, K=kilit();
+  if(on&&!p1&&!(K&&K.hash)){ toastMsg("Bir şifre yazın."); return; }
+  if(p1&&p1.length<4){ toastMsg("Şifre en az 4 karakter olmalı."); return; }
+  if(p1!==p2){ toastMsg("İki şifre aynı değil."); return; }
+  let next=K?Object.assign({},K):null;
+  if(p1){ const salt=b64u(crypto.getRandomValues(new Uint8Array(12))); next={on:on?1:0,salt,hash:await sha(salt+p1)}; }
+  else if(next) next.on=on?1:0;
+  window.__mt.saveSettings(s=>{ if(next) s.kilit=next; else delete s.kilit; });
+  fillGuv(); toastMsg(on?"Kaydedildi. Uygulama açılırken şifre sorulacak.":"Kaydedildi. Şifre sorulmayacak.");
+});
+$("g-lock").addEventListener("click",()=>{ $("settings").open=false; showLock("pin"); });
+$("settings").addEventListener("toggle",()=>{if($("settings").open) fillGuv()});
+fillGuv();
 
 window.addEventListener("online",sync);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) sync(); });
 setInterval(()=>{ if(!document.hidden) sync(); },60000);
 renderPanel();
+checkLock();
 if(cfg.token) setTimeout(sync,300); else status(false,"Bu cihazda saklanıyor");
 })();
 </script>
