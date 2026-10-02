@@ -64,6 +64,8 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .vrow:first-of-type{border-top:0}
 .vname{font-weight:700}
 .seg{border:1px solid var(--line);background:transparent;border-radius:10px;height:42px;padding:0 6px;font-weight:500;font-size:.92rem}
+.seg.k{height:auto;min-height:42px;line-height:1.1;padding-block:4px}
+.btime{display:block;font-size:.78rem;font-weight:600;opacity:.75;margin-top:2px}
 .seg.k.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
 .seg.x.on.madeup{background:var(--late-soft);border-color:var(--late);color:var(--late-ink)}
 .seg.g.on{background:var(--late-soft);border-color:var(--late);color:var(--late-ink);font-weight:700}
@@ -153,7 +155,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
   <header class="top">
     <div class="toprow">
       <h1>CENNET YOLU</h1>
-      <div class="row" style="gap:10px"><div class="sync" id="sync"><span class="dot" id="syncdot"></span><span id="synctext">Bu cihazda saklanıyor</span></div><button class="iconbtn" id="opensettings" type="button" aria-label="Ayarlar">⚙ Ayarlar</button></div>
+      <div class="row" style="gap:10px"><div class="sync" id="sync"><span class="dot" id="syncdot"></span><span id="synctext">Bu cihazda saklanıyor</span></div><button class="iconbtn" id="refreshbtn" type="button" aria-label="Güncelle" title="Güncelle">⟳</button><button class="iconbtn" id="opensettings" type="button" aria-label="Ayarlar">⚙ Ayarlar</button></div>
     </div>
     <div class="datenav">
       <button class="iconbtn" id="prev" aria-label="Önceki gün">◀</button>
@@ -573,8 +575,8 @@ function render(){
   for(const [k,name] of VAKIT){
     const st=d.n[k];
     V.append(el("div",{class:"vrow"},
-      el("div",{class:"vname"},name,VT[cur]?el("span",{class:"vtime num"},VT[cur][k==="sabah"?"imsak":k]||""):null),
-      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım"),
+      el("div",{class:"vname"},name),
+      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k]):null),
       el("button",{class:"seg x"+(st==="x"?(madeUpCur.has(cur+":"+k)?" on madeup":" on"):""),"aria-pressed":st==="x",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
       kazaBtn(d,k,name)
     ));
@@ -795,6 +797,11 @@ $("prev").addEventListener("click",()=>{if(cur<=PROGRAM_START)return;cur=addDays
 $("next").addEventListener("click",()=>{cur=addDays(cur,1);render()});
 $("today").addEventListener("click",()=>{cur=todayIso();render()});
 $("cevbtn").addEventListener("click",()=>toggleRead("c",1));
+$("refreshbtn").addEventListener("click",async()=>{
+  const b=$("refreshbtn"); b.disabled=true; b.textContent="…";
+  try{ if(window.__mtRefresh) await window.__mtRefresh(); else location.reload(); }
+  finally{ b.disabled=false; b.textContent="⟳"; }
+});
 $("opensettings").addEventListener("click",()=>{const d=$("settings");d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){render()}});
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
@@ -905,12 +912,16 @@ async function genVapid(){
 }
 function deviceName(){const u=navigator.userAgent;return /iPad/.test(u)?"iPad":/iPhone/.test(u)?"iPhone":/Android/.test(u)?(/Mobile/.test(u)?"Android telefon":"Android tablet"):"Bilgisayar"}
 const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+function showVakit(){
+  const N=window.__mt.get().settings.notify;
+  if(window.__mt.setVakit) window.__mt.setVakit(server&&server.days&&(!server.ilce||server.ilce===N.ilce.id)?server.days:{});
+}
 let pushBusy=false;
 async function notifySync(g){
   const gon=await fileJSON(g,GFILE);
   if(gon){ server={days:(gon.vakit&&gon.vakit.days)||{},last:gon.last||0,error:gon.error||"",ilce:gon.vakit&&gon.vakit.id,gone:gon.gone||[]};
     try{localStorage.setItem("mt-vakit",JSON.stringify(server))}catch(e){}
-    window.__mt.setVakit&&window.__mt.setVakit(server.days); }
+    showVakit(); }
   renderNotify(false);
   locate(false);
   if(pushBusy) return;
@@ -1038,13 +1049,20 @@ async function locate(force){
     const m=matchIlce(await reverse(pos.coords.latitude.toFixed(4),pos.coords.longitude.toFixed(4)));
     if(!m){kmsg("Bulunduğunuz yer Diyanet listesinde eşleşmedi, ilçeyi elle seçin.");return}
     if(m.id!==N.ilce.id){
-      window.__mt.saveSettings(s=>{s.notify.ilce=m});
+      window.__mt.saveSettings(s=>{s.notify.ilce=m}); showVakit();
       kmsg("Konumunuz: "+m.il+" / "+m.ad+". Vakitler birkaç dakika içinde bu ilçeye göre güncellenir.");
       if($("settings").open) renderNotify(true);
     }else kmsg("Konumunuz: "+m.il+" / "+m.ad+".");
   }catch(e){kmsg("Konumdan ilçe bulunamadı (internet?).")}
 }
 $("n-konum").addEventListener("click",()=>locate(true));
+window.__mtRefresh=async()=>{
+  if(!navigator.onLine){ status(false,"İnternet yok; bu cihazdaki kayıtlar ve vakitlerle çalışıyor"); return; }
+  try{ if(window.__mt.get().settings.notify.oto) await locate(true); }catch(e){}
+  try{ await sync(); }catch(e){}
+  try{ const reg=await navigator.serviceWorker.getRegistration(); if(reg) await reg.update(); }catch(e){}
+  location.reload();
+};
 $("n-oto").addEventListener("change",()=>{window.__mt.saveSettings(s=>{s.notify.oto=$("n-oto").checked?1:0}); if($("n-oto").checked) locate(true);});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden) locate(false)});
 setTimeout(()=>locate(false),1500);
@@ -1059,6 +1077,7 @@ $("ntfsave").addEventListener("click",()=>{
     N.program={on:$("n-pon").checked?1:0,saat:hm($("n-psaat").value)||N.program.saat};
     N.okuma={on:$("n-oon").checked?1:0,saat:hm($("n-osaat").value)||N.okuma.saat};
   });
+  showVakit();
   nmsg(cfg.token?"Kaydedildi; zamanlayıcı birkaç dakika içinde yeni ayarlarla çalışır.":"Kaydedildi. Bildirimlerin gelmesi için eşitlemeyi açın.");
 });
 $("ntfon").addEventListener("click",pushOn);
@@ -1066,6 +1085,7 @@ $("ntfoff").addEventListener("click",pushOff);
 $("ntftest").addEventListener("click",pushTest);
 $("settings").addEventListener("toggle",()=>{if($("settings").open) renderNotify(true)});
 renderNotify(true);
+showVakit();
 
 window.__mtChanged=()=>{ if(!cfg.token) return; clearTimeout(timer); timer=setTimeout(sync,2000); };
 
