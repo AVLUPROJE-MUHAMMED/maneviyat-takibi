@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<title>Cennet Yolculuğu</title>
+<title>CENNET YOLCULUĞU</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1f4f7a">
-<meta name="apple-mobile-web-app-title" content="Cennet Yolculuğu">
+<meta name="apple-mobile-web-app-title" content="CENNET YOLCULUĞU">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
@@ -152,7 +152,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
 <div class="wrap">
   <header class="top">
     <div class="toprow">
-      <h1>Cennet Yolculuğu</h1>
+      <h1>CENNET YOLCULUĞU</h1>
       <div class="row" style="gap:10px"><div class="sync" id="sync"><span class="dot" id="syncdot"></span><span id="synctext">Bu cihazda saklanıyor</span></div><button class="iconbtn" id="opensettings" type="button" aria-label="Ayarlar">⚙ Ayarlar</button></div>
     </div>
     <div class="datenav">
@@ -762,7 +762,7 @@ $("setform").addEventListener("submit",e=>{
 });
 
 /* ---------- yedek ---------- */
-const backupText=()=>JSON.stringify({uygulama:"Cennet Yolculuğu",tarih:new Date().toISOString(),veri:S});
+const backupText=()=>JSON.stringify({uygulama:"CENNET YOLCULUĞU",tarih:new Date().toISOString(),veri:S});
 $("exportbtn").addEventListener("click",()=>{
   const txt=backupText(); const ta=$("backup"); ta.value=txt;
   const fallback=()=>{ta.focus();ta.select();toast("Yedek kutuda, seçip kopyalayın")};
@@ -782,7 +782,7 @@ let armed=false;
 $("importbtn").addEventListener("click",()=>{
   let obj; try{obj=JSON.parse($("backup").value)}catch(e){$("importmsg").textContent="Metin okunamadı. Yedeğin tamamını yapıştırdığınızdan emin olun.";return}
   const data=obj&&obj.veri?obj.veri:obj;
-  if(!data||!data.settings){$("importmsg").textContent="Bu metin bir Cennet Yolculuğu yedeği değil.";return}
+  if(!data||!data.settings){$("importmsg").textContent="Bu metin bir CENNET YOLCULUĞU yedeği değil.";return}
   if(!armed){armed=true;$("importbtn").textContent="Emin misiniz? Mevcut veriler değişecek";setTimeout(()=>{armed=false;$("importbtn").textContent="Geri yükle"},5000);return}
   armed=false;$("importbtn").textContent="Geri yükle";
   S=normalize(data); if(S.seed<SEED_VERSION) S.seed=SEED_VERSION; markFull(); fillSettings(); render(); $("importmsg").textContent=""; toast("Yedek geri yüklendi");
@@ -970,7 +970,7 @@ async function pushOff(){
   cfg.push=false; cfg.vapid=null; pushBusy=false; saveCfg(); nmsg("Bu cihazda bildirimler kapatıldı."); renderNotify(false);
 }
 async function pushTest(){
-  try{const reg=await navigator.serviceWorker.ready; await reg.showNotification("Cennet Yolculuğu",{body:"Deneme: bildirimler bu cihazda görünüyor.",icon:"icon-192.png",badge:"icon-192.png",tag:"deneme"});}catch(e){}
+  try{const reg=await navigator.serviceWorker.ready; await reg.showNotification("CENNET YOLCULUĞU",{body:"Deneme: bildirimler bu cihazda görünüyor.",icon:"icon-192.png",badge:"icon-192.png",tag:"deneme"});}catch(e){}
   try{await editBil(bil=>{bil.test=Date.now()}); nmsg("Telefondaki deneme hemen göründü. Zamanlayıcıdan gelen deneme birkaç dakika içinde gelir.");}
   catch(e){ nmsg("Deneme isteği gönderilemedi."); }
 }
