@@ -34,7 +34,7 @@
   --accent:#7fb2e0; --accent-soft:#1d3346; --ok:#5cc58c; --ok-soft:#173a29; --no:#ee7d74; --no-soft:#432220; --late:#e0b443; --late-soft:#3d321a; --late-ink:#f0cd72; --on-solid:#0f171d; --idle:#24323b; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:12px 40px}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:0 40px}
 h1,h2{font-family:var(--display);font-weight:700;margin:0;text-wrap:balance}
 h1{font-size:1.6rem;letter-spacing:.01em}
 h2{font-size:1.2rem}
@@ -44,7 +44,7 @@ h2{font-size:1.2rem}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:20px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
 /* Selçuklu yıldızı: sabit zemin deseni; yapışkan başlık aynı deseni hizalı taşır */
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg) var(--motif) 0 0/96px 96px;pointer-events:none}
 header.top{background-image:var(--motif);background-size:96px 96px}
@@ -989,8 +989,9 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
 
 /* başlığın desenini zeminle hizala */
-function motifAlign(){const h=document.querySelector("header.top");if(!h)return;const r=h.getBoundingClientRect(),top=parseFloat(getComputedStyle(h).top)||0;h.style.backgroundPosition=(-r.left)+"px "+(-top)+"px"}
-addEventListener("resize",motifAlign);motifAlign();
+function motifAlign(){const h=document.querySelector("header.top");if(!h)return;const r=h.getBoundingClientRect();h.style.backgroundPosition=(-r.left)+"px "+(-r.top)+"px"}
+let motifRaf=0;const motifTick=()=>{if(!motifRaf)motifRaf=requestAnimationFrame(()=>{motifRaf=0;motifAlign()})};
+addEventListener("resize",motifTick);addEventListener("scroll",motifTick,{passive:true});motifAlign();
 fillSettings(); render(); yedekCheck(); initCloud();
 })();
 
