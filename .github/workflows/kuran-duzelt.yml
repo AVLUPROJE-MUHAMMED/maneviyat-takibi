@@ -1,0 +1,20 @@
+name: Kuran duzelt (tek seferlik)
+on:
+  workflow_dispatch:
+    inputs:
+      yap:
+        description: "1 = düzelt, 0 = yalnız göster"
+        default: "0"
+permissions:
+  contents: read
+jobs:
+  duzelt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/kuran-duzelt.mjs
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          YAP: ${{ inputs.yap }}
