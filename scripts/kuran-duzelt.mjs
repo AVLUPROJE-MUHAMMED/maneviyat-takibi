@@ -5,6 +5,7 @@ const list = (await gh("/gists?per_page=100")).filter(x => x.description === "mu
 const g = await gh("/gists/" + list[0].id), f = g.files["maneviyat.json"];
 const st = JSON.parse(f.truncated ? await (await fetch(f.raw_url, { headers: { Authorization: "Bearer " + TOKEN } })).text() : f.content);
 const gun = k => { const d = st.days?.[k]; return d ? { qa: d.qa, qm: d.qm } : null; };
+console.log("gist", g.id.slice(0,6), "updated", g.updated_at, "3 Ekim", JSON.stringify(st.days?.["2026-10-03"]), "gün sayısı", Object.keys(st.days||{}).length);
 console.log("önce quran", JSON.stringify(st.settings?.quran), "su", st.settings?.su, "2-4 Ekim", JSON.stringify([gun("2026-10-02"), gun("2026-10-03"), gun("2026-10-04")]));
 if (YAP) {
   st.settings.quran = { ...st.settings.quran, arStart: 498, mealStart: 498, anchorDate: "2026-10-03", perDay: 2, cift2: 1 };
