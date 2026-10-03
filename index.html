@@ -411,7 +411,7 @@ function defaults(){
     oldKaza:{from:"2007-07-01",to:"2026-10-02",trackFrom:"2026-10-03"},
     /* kaldığı yer: tablodaki ilk kırmızı Risale günü 1 Ağustos, Şualar 31. sayfa; ilk kırmızı Kur'an günü 5 Ağustos, 499. sayfa */
     risale:{books:BOOKS.map(([name,pages])=>({name,pages})),startBook:4,startPage:30,anchorDate:"2026-10-03",perDay:10},
-    quran:{arStart:499,mealStart:499,anchorDate:"2026-10-03",perDay:2,endPage:600},
+    quran:{arStart:498,mealStart:498,anchorDate:"2026-10-03",perDay:2,endPage:600,cift:1},
     cevsen:{weekStart:6,plan:["Sureler kısmı","Cevşen","Evrad-ı Kudsiye","Delailü'n-Nur","İsm-i Azam ve Münacatü'l-Kur'an","Tahmidiye","Hülasatü'l-Hakaik ve Dua"]},
     /* bildirimler: vakitler Diyanet ilçe numarasına göre (9541 = İstanbul) */
     notify:defaultNotify()
@@ -442,6 +442,9 @@ function normalize(s){
   nt.yedek.gun=Math.max(1,Math.min(28,Number(nt.yedek.gun)||1));
   if(st.su) out.settings.su=Number(st.su)||0;
   if(st.kilit&&st.kilit.hash) out.settings.kilit={on:st.kilit.on?1:0,salt:String(st.kilit.salt||""),hash:String(st.kilit.hash)};
+  /* 3 Ekim 2026: Kur'an ve meal karşılıklı sayfalarla (498–499, 500–501) ilerlesin diye başlangıç bir kez 498'e alınır */
+  const q=out.settings.quran;
+  if(!q.cift){ if(q.anchorDate==="2026-10-03"){ if(Number(q.arStart)===499) q.arStart=498; if(Number(q.mealStart)===499) q.mealStart=498; } q.cift=1; }
   const r=out.settings.risale;
   if(!Array.isArray(r.books)||!r.books.length) r.books=d.settings.risale.books;
   r.books=r.books.map(b=>({name:String(b.name||"Kitap"),pages:Math.max(1,Number(b.pages)||1)}));
