@@ -76,6 +76,7 @@ header.top{background-image:var(--motif);background-size:96px 96px}
 .vname{font-weight:700}
 .seg{border:1px solid var(--line);background:transparent;border-radius:10px;height:42px;padding:0 6px;font-weight:500;font-size:.92rem}
 .seg.k{height:auto;min-height:42px;line-height:1.1;padding-block:4px}
+.konum{padding-top:8px;border-top:1px solid var(--line);font-size:.8rem}
 .btime{display:block;font-size:.78rem;font-weight:600;opacity:.75;margin-top:2px;white-space:nowrap}
 .btime.iki{font-size:.78rem;letter-spacing:-.03em}
 .seg:has(.iki){padding:0 2px}
@@ -251,7 +252,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 46</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 47</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -646,6 +647,8 @@ function render(){
     ));
   }
   V.append(el("div",{class:"vrow"},el("div",{class:"vname"},"Vitir"),el("div",{class:"small muted",style:"grid-column:span 2"},"Yatsı ile kılınır; yatsıyı kılmadım derseniz vitir de yeni kaza listesine eklenir"),kazaBtn(d,"vitir","Vitir")));
+  { const I=S.settings.notify.ilce||{}, bek=window.__mtVakitIlce&&I.id&&window.__mtVakitIlce!==I.id;
+    V.append(el("div",{class:"small muted konum"},I.ad?"Konum: "+(I.il?I.il+" / ":"")+I.ad+(bek?" · vakitler güncelleniyor":""):"Konum seçilmedi (Ayarlar > Bildirimler)")); }
 
   // 20 yıllık kaza
   const fmt=n=>n.toLocaleString("tr-TR");
@@ -1109,6 +1112,7 @@ const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notific
 let vakitBekle=0;
 function showVakit(){
   const N=window.__mt.get().settings.notify;
+  window.__mtVakitIlce=server&&server.ilce||0;
   if(window.__mt.setVakit) window.__mt.setVakit(server&&server.days?server.days:{});
   if(server&&server.ilce&&server.ilce!==N.ilce.id){ if(vakitBekle<6){ vakitBekle++; setTimeout(()=>sync().catch(()=>{}),40000); } }
   else vakitBekle=0;
