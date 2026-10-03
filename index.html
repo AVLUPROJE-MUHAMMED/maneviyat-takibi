@@ -250,7 +250,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek</summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 44</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -996,6 +996,8 @@ $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings
 function motifAlign(){const h=document.querySelector("header.top");if(!h)return;const r=h.getBoundingClientRect();h.style.backgroundPosition=(-r.left)+"px "+(-r.top)+"px"}
 let motifRaf=0;const motifTick=()=>{if(!motifRaf)motifRaf=requestAnimationFrame(()=>{motifRaf=0;motifAlign()})};
 addEventListener("resize",motifTick);addEventListener("scroll",motifTick,{passive:true});motifAlign();
+/* 3 Ekim 2026: Kur'an/meal karşılıklı sayfalar (498–499, 500–501); bu cihazda bir kez zorla uygulanır ve diğer cihazlara eşitlenir */
+try{ if(!localStorage.getItem("mt-k498")){ const q=S.settings.quran; q.anchorDate="2026-10-03"; q.arStart=498; q.mealStart=498; q.perDay=2; q.cift2=1; markSettings(); localStorage.setItem("mt-k498","1"); } }catch(e){}
 fillSettings(); render(); yedekCheck(); initCloud();
 })();
 
