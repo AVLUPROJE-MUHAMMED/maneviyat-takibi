@@ -66,7 +66,7 @@ header.top{background-image:var(--motif);background-size:96px 96px}
 .grid{display:grid;gap:14px}
 @media (min-width:820px){.grid{grid-template-columns:1fr 1fr;align-items:start}.col{display:grid;gap:14px}}
 .col{display:grid;gap:14px;min-width:0}
-.card,.cardhead{scroll-margin-top:12px}
+.card,.cardhead{scroll-margin-top:calc(var(--hh,0px) + 12px)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
 .cardhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 
@@ -252,7 +252,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 49</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 50</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -997,7 +997,8 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
 
 /* başlığın desenini zeminle hizala */
-function motifAlign(){const h=document.querySelector("header.top");if(!h)return;const r=h.getBoundingClientRect();h.style.backgroundPosition=(-r.left)+"px "+(-r.top)+"px"}
+let motifHH=-1;
+function motifAlign(){const h=document.querySelector("header.top");if(!h)return;const r=h.getBoundingClientRect();if(h.offsetHeight!==motifHH){motifHH=h.offsetHeight;document.documentElement.style.setProperty("--hh",motifHH+"px")}h.style.backgroundPosition=(-r.left)+"px "+(-r.top)+"px"}
 let motifRaf=0;const motifTick=()=>{if(!motifRaf)motifRaf=requestAnimationFrame(()=>{motifRaf=0;motifAlign()})};
 addEventListener("resize",motifTick);addEventListener("scroll",motifTick,{passive:true});motifAlign();
 /* 3 Ekim 2026: Kur'an/meal karşılıklı sayfalar (498–499, 500–501); bu cihazda bir kez zorla uygulanır ve diğer cihazlara eşitlenir */
