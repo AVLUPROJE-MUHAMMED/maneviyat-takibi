@@ -251,7 +251,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 45</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 46</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -1105,9 +1105,13 @@ async function genVapid(){
 }
 function deviceName(){const u=navigator.userAgent;return /iPad/.test(u)?"iPad":/iPhone/.test(u)?"iPhone":/Android/.test(u)?(/Mobile/.test(u)?"Android telefon":"Android tablet"):"Bilgisayar"}
 const pushOK=()=>"serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window;
+/* ilçe değişince (yolculukta konumdan) yeni ilçenin vakitleri zamanlayıcıdan gelene kadar son bilinen vakitler gösterilir; kısa aralıklarla yeniden eşitlenir */
+let vakitBekle=0;
 function showVakit(){
   const N=window.__mt.get().settings.notify;
-  if(window.__mt.setVakit) window.__mt.setVakit(server&&server.days&&(!server.ilce||server.ilce===N.ilce.id)?server.days:{});
+  if(window.__mt.setVakit) window.__mt.setVakit(server&&server.days?server.days:{});
+  if(server&&server.ilce&&server.ilce!==N.ilce.id){ if(vakitBekle<6){ vakitBekle++; setTimeout(()=>sync().catch(()=>{}),40000); } }
+  else vakitBekle=0;
 }
 let pushBusy=false;
 let takvimVar=false;
