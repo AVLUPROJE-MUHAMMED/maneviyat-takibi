@@ -71,12 +71,13 @@ header.top{background-image:var(--motif);background-size:96px 96px}
 .cardhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 
 /* namaz */
-.vrow{display:grid;grid-template-columns:4.2rem 1fr 1fr auto;gap:6px;align-items:center;padding-block:6px;border-top:1px solid var(--line)}
+.vrow{display:grid;grid-template-columns:4.2rem minmax(0,1fr) minmax(0,1fr) auto;gap:6px;align-items:center;padding-block:6px;border-top:1px solid var(--line)}
 .vrow:first-of-type{border-top:0}
 .vname{font-weight:700}
 .seg{border:1px solid var(--line);background:transparent;border-radius:10px;height:42px;padding:0 6px;font-weight:500;font-size:.92rem}
 .seg.k{height:auto;min-height:42px;line-height:1.1;padding-block:4px}
-.btime{display:block;font-size:.78rem;font-weight:600;opacity:.75;margin-top:2px}
+.btime{display:block;font-size:.78rem;font-weight:600;opacity:.75;margin-top:2px;white-space:nowrap}
+.btime.iki{font-size:.68rem;letter-spacing:-.02em}
 .seg.k.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
 .seg.x.on.madeup{background:var(--late-soft);border-color:var(--late);color:var(--late-ink)}
 .seg.g.on{background:var(--late-soft);border-color:var(--late);color:var(--late-ink);font-weight:700}
@@ -157,7 +158,7 @@ textarea{min-height:110px;font-family:ui-monospace,Menlo,monospace;font-size:.78
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:380px){.vrow{grid-template-columns:3.6rem 1fr 1fr auto}.vname{font-size:.92rem}.seg{font-size:.84rem}.kz{font-size:.76rem;padding:0 6px}}
+@media (max-width:380px){.vrow{grid-template-columns:3.6rem minmax(0,1fr) minmax(0,1fr) auto}.vname{font-size:.92rem}.seg{font-size:.84rem}.kz{font-size:.76rem;padding:0 6px}}
 </style>
 
 </head>
@@ -635,7 +636,7 @@ function render(){
     const st=d.n[k];
     V.append(el("div",{class:"vrow"},
       el("div",{class:"vname"},name),
-      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k]):null),
+      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?(k==="sabah"&&VT[cur].gunes?el("span",{class:"btime num iki"},VT[cur].imsak+"\u2009/\u2009"+VT[cur].gunes):el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k])):null),
       el("button",{class:"seg x"+(st==="x"?(madeUpCur.has(cur+":"+k)?" on madeup":" on"):""),"aria-pressed":st==="x",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
       kazaBtn(d,k,name)
     ));
