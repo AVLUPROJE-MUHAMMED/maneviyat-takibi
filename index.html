@@ -245,14 +245,14 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </div>
 
   <section class="card" style="margin-top:14px" aria-labelledby="h-hist">
-    <div class="cardhead"><h2 id="h-hist">1 yıllık plan</h2><span class="small muted">3 Ekim 2026'dan sonrası · yukarı aşağı ve yana kaydırabilirsiniz</span></div>
+    <div class="cardhead"><h2 id="h-hist">1 yıllık plan</h2><span class="small muted">3 Ekim 2026 ve sonrası · yukarı aşağı ve yana kaydırabilirsiniz</span></div>
         <div class="histwrap" id="histwrap"><table class="hist" id="hist"></table></div>
     <div class="row" style="margin-top:10px"><button class="btn ghost" id="xlsbtn" type="button">Excel indir</button><button class="btn ghost" id="pdfbtn" type="button">PDF indir</button></div>
     <div class="legend"><span><i style="background:var(--ok)"></i>Kılındı / okundu</span><span><i style="background:var(--late)"></i>Kaza edildi</span><span><i style="background:var(--no)"></i>Kılınmadı / okunmadı</span><span><i style="background:var(--idle)"></i>İleri tarih: plan</span></div>
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 48</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 49</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -674,8 +674,7 @@ function render(){
   }
   $("newtotal").textContent=String(nt); $("newtotal").classList.toggle("zero",nt<=0);
   $("newsub").textContent=nt>0?"vakit kaza kaldı":"kaçırılan namaz yok";
-  { const t=parse(O.trackFrom), y=t.getFullYear(), son=y%10, ek=son?["","den","den","ten","ten","ten","dan","den","den","dan"][son]:({0:"den",10:"dan",20:"den",30:"dan",40:"tan",50:"den",60:"tan",70:"ten",80:"den",90:"dan"})[y%100]||"den";
-    $("newrange").textContent=t.toLocaleDateString("tr-TR",{day:"numeric",month:"long"})+" "+y+"'"+ek+" sonrası"; }
+  $("newrange").textContent=parse(O.trackFrom).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"})+" ve sonrası";
 
   // okumalar
   const T=$("tasks"); T.replaceChildren();
@@ -748,7 +747,7 @@ function renderHist(t){
     const dd=addDays(t,i); const v=day(dd); const dt=parse(dd);
     const past=i<0, isToday=i===0, future=i>0, before=dd<S.settings.startDate;
     const rowCls=[past?"past":future?"future":"today",dd===cur?"sel":"",cevIndex(dd)===0?"wk":""].join(" ");
-    h+='<tr class="'+rowCls+'" data-d="'+dd+'"><td class="lbl">'+(isToday?"Bugün":GUNK[dt.getDay()])+" "+dt.getDate()+"."+(dt.getMonth()+1)+(dt.getMonth()===0&&dt.getDate()===1||i===first?"."+dt.getFullYear():"")+"</td>";
+    h+='<tr class="'+rowCls+'" data-d="'+dd+'"><td class="lbl">'+(isToday?"Bugün":GUNK[dt.getDay()])+" "+dt.getDate()+"."+(dt.getMonth()+1)+"."+dt.getFullYear()+"</td>";
     for(const [k] of VK){
       const st=v.n[k];
       if(st==="k") h+=cell("ok","Kılındı");
