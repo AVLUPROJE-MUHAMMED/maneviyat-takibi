@@ -5,6 +5,7 @@ import webpush from "web-push";
 import nodemailer from "nodemailer";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { crc32 } from "node:zlib";
 
 const TOKEN = process.env.GIST_TOKEN;
@@ -276,7 +277,9 @@ async function main() {
     // takvim dosyası (yalnız değiştiyse yazılır)
     if (N.takvim && gon.vakit?.days) {
       const t = buildIcs(N, gon.vakit.days, bil?.plan || {}, now);
-      if (t !== (g.files["takvim.ics"]?.content || "")) { await gh("/gists/" + gid, { method: "PATCH", body: JSON.stringify({ files: { "takvim.ics": { content: t } } }) }); log("takvim güncellendi", (t.match(/BEGIN:VEVENT/g) || []).length, "olay"); }
+      // dosya 1 MB'ı aştığı için GitHub içeriği kırpılmış veriyor; karşılaştırma son yazılanın özetiyle yapılır (yoksa her turda yazıp hız sınırına takılıyordu)
+      const h = createHash("sha1").update(t).digest("hex");
+      if (h !== gon.icsH) { await gh("/gists/" + gid, { method: "PATCH", body: JSON.stringify({ files: { "takvim.ics": { content: t } } }) }); gon.icsH = h; log("takvim güncellendi", (t.match(/BEGIN:VEVENT/g) || []).length, "olay"); }
     }
     // eski kayıtları temizle
     const cut = now - 3 * 86400000;
