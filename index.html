@@ -411,7 +411,7 @@ function defaults(){
     oldKaza:{from:"2007-07-01",to:"2026-10-02",trackFrom:"2026-10-03"},
     /* kaldığı yer: tablodaki ilk kırmızı Risale günü 1 Ağustos, Şualar 31. sayfa; ilk kırmızı Kur'an günü 5 Ağustos, 499. sayfa */
     risale:{books:BOOKS.map(([name,pages])=>({name,pages})),startBook:4,startPage:30,anchorDate:"2026-10-03",perDay:10},
-    quran:{arStart:498,mealStart:498,anchorDate:"2026-10-03",perDay:2,endPage:600,cift2:1},
+    quran:{arStart:498,mealStart:498,anchorDate:"2026-10-03",perDay:2,endPage:600},
     cevsen:{weekStart:6,plan:["Sureler kısmı","Cevşen","Evrad-ı Kudsiye","Delailü'n-Nur","İsm-i Azam ve Münacatü'l-Kur'an","Tahmidiye","Hülasatü'l-Hakaik ve Dua"]},
     /* bildirimler: vakitler Diyanet ilçe numarasına göre (9541 = İstanbul) */
     notify:defaultNotify()
@@ -444,7 +444,7 @@ function normalize(s){
   if(st.kilit&&st.kilit.hash) out.settings.kilit={on:st.kilit.on?1:0,salt:String(st.kilit.salt||""),hash:String(st.kilit.hash)};
   /* 3 Ekim 2026: Kur'an ve meal karşılıklı sayfalarla (498–499, 500–501) ilerlesin diye başlangıç bir kez 498'e alınır */
   const q=out.settings.quran;
-  if(!q.cift2){ q.anchorDate="2026-10-03"; q.arStart=498; q.mealStart=498; q.perDay=2; q.cift2=1; }
+  if(!(st.quran&&st.quran.cift2)){ q.anchorDate="2026-10-03"; q.arStart=498; q.mealStart=498; q.perDay=2; q.cift2=1; }
   const r=out.settings.risale;
   if(!Array.isArray(r.books)||!r.books.length) r.books=d.settings.risale.books;
   r.books=r.books.map(b=>({name:String(b.name||"Kitap"),pages:Math.max(1,Number(b.pages)||1)}));
@@ -1294,7 +1294,12 @@ window.__mtRefresh=async()=>{
     const ks=await caches.keys(); if(m&&ks.length&&!ks.includes(m[1])) yeni=true;
     const reg=await navigator.serviceWorker.getRegistration(); if(reg) await reg.update();
   }catch(e){}
-  if(yeni){ location.reload(); return; }
+  if(yeni){
+    // tarayıcının önbelleğindeki eski sayfayı tazele, yeni sürüm hizmet çalışanının devreye girmesini kısa süre bekle
+    try{ await Promise.all(["./","index.html"].map(u=>fetch(u,{cache:"reload"}))); }catch(e){}
+    await new Promise(ok=>{ const t=setTimeout(ok,3000); navigator.serviceWorker&&navigator.serviceWorker.addEventListener("controllerchange",()=>{clearTimeout(t);ok()},{once:true}); });
+    location.reload(); return;
+  }
   window.__mt.set(window.__mt.get());
 };
 $("n-oto").addEventListener("change",()=>{window.__mt.saveSettings(s=>{s.notify.oto=$("n-oto").checked?1:0}); if($("n-oto").checked) locate(true);});
