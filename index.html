@@ -77,7 +77,8 @@ header.top{background-image:var(--motif);background-size:96px 96px}
 .seg{border:1px solid var(--line);background:transparent;border-radius:10px;height:42px;padding:0 6px;font-weight:500;font-size:.92rem}
 .seg.k{height:auto;min-height:42px;line-height:1.1;padding-block:4px}
 .btime{display:block;font-size:.78rem;font-weight:600;opacity:.75;margin-top:2px;white-space:nowrap}
-.btime.iki{font-size:.68rem;letter-spacing:-.02em}
+.btime.iki{font-size:.78rem;letter-spacing:-.03em}
+.seg:has(.iki){padding:0 2px}
 .seg.k.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
 .seg.x.on.madeup{background:var(--late-soft);border-color:var(--late);color:var(--late-ink)}
 .seg.g.on{background:var(--late-soft);border-color:var(--late);color:var(--late-ink);font-weight:700}
@@ -250,7 +251,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 44</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 45</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
