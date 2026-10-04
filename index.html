@@ -252,7 +252,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 50</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 51</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -425,6 +425,7 @@ function normDay(v){
   e.n=Object.assign(e.n,v.n||{}); for(const k in e.n) if(e.n[k]==="g") e.n[k]="k"; e.kz=Object.assign(e.kz,v.kz||{}); e.nk=Object.assign(e.nk,v.nk||{});
   for(const f of ["r","qa","qm","sk","c"]) e[f]=Number(v[f])||0;
   if(v.u) e.u=Number(v.u)||0;
+  if(v.a&&typeof v.a==="object"){const a={};for(const k in e.n) if(v.a[k]) a[k]=1; if(Object.keys(a).length) e.a=a;}
   return e;
 }
 function normalize(s){
@@ -550,6 +551,15 @@ async function initCloud(){
 /* ---------- hesaplar ---------- */
 const day=d=>S.days[d]||emptyDay();
 function ensure(d){ if(!S.days[d]) S.days[d]=emptyDay(); return S.days[d]; }
+/* gün bitince (ertesi gün 00:00) işaretlenmemiş vakitler kendiliğinden "Kılmadım" olur ve yeni kaza listesine geçer; a = otomatik işaret */
+function autoMiss(){
+  const t=iso(new Date()); let d=S.settings.oldKaza.trackFrom;
+  for(;d<t;d=addDays(d,1)){
+    let ch=false;
+    for(const [k] of VAKIT){ const v=S.days[d]; if(v&&v.n[k]) continue; const x=ensure(d); x.n[k]="x"; (x.a=x.a||{})[k]=1; ch=true; }
+    if(ch) markDay(d);
+  }
+}
 function sumBefore(field,date,from){let t=0;for(const [k,v] of Object.entries(S.days)) if(k<date&&(!from||k>=from)) t+=v[field]||0;return t}
 const dayCount=(a,b)=>Math.max(0,Math.round((parse(b)-parse(a))/86400000)+1);
 function oldDebt(){
@@ -626,6 +636,7 @@ function kazaBtn(d,k,name){
 }
 
 function render(){
+  autoMiss();
   const t=todayIso(); if(cur>t) cur=t;
   const dt=parse(cur);
   $("datelabel").textContent=dt.toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
@@ -641,8 +652,8 @@ function render(){
     const st=d.n[k];
     V.append(el("div",{class:"vrow"},
       el("div",{class:"vname"},name),
-      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?(k==="sabah"&&VT[cur].gunes?el("span",{class:"btime num iki"},VT[cur].imsak+"\u2009/\u2009"+VT[cur].gunes):el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k])):null),
-      el("button",{class:"seg x"+(st==="x"?(madeUpCur.has(cur+":"+k)?" on madeup":" on"):""),"aria-pressed":st==="x",onclick:()=>{const x=ensure(cur);x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
+      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);if(x.a)delete x.a[k];x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?(k==="sabah"&&VT[cur].gunes?el("span",{class:"btime num iki"},VT[cur].imsak+"\u2009/\u2009"+VT[cur].gunes):el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k])):null),
+      el("button",{class:"seg x"+(st==="x"?(madeUpCur.has(cur+":"+k)?" on madeup":" on"):""),"aria-pressed":st==="x",onclick:()=>{const x=ensure(cur);if(x.a)delete x.a[k];x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
       kazaBtn(d,k,name)
     ));
   }
@@ -993,6 +1004,8 @@ $("refreshbtn").addEventListener("click",async()=>{
   finally{ b.disabled=false; b.style.opacity=""; }
 });
 $("opensettings").addEventListener("click",()=>{const d=$("settings");d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})});
+/* gece yarısı uygulama açıksa günü yenile */
+(function gece(){const n=new Date(),m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1,0,0,5);const t0=todayIso();setTimeout(()=>{if(cur===t0)cur=todayIso();render();gece()},m-n)})();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();yedekCheck()}});
 $("settings").addEventListener("toggle",()=>{if($("settings").open) fillSettings()});
 
@@ -1053,7 +1066,11 @@ function merge(local,remote){
   out.days={};
   for(const k of keys){
     const x=a.days[k], y=b.days[k];
-    out.days[k]=!x?y:!y?x:((y.u||0)>(x.u||0)?y:x);
+    if(!x||!y){ out.days[k]=x||y; continue; }
+    const w=(y.u||0)>(x.u||0)?y:x, o=w===y?x:y;
+    /* otomatik "Kılmadım", öbür cihazda elle işaretlenen değeri ezmesin */
+    if(w.a){ const c=JSON.parse(JSON.stringify(w)); for(const v in w.a) if(o.n&&o.n[v]&&!(o.a&&o.a[v])){ c.n[v]=o.n[v]; delete c.a[v]; } out.days[k]=c; }
+    else out.days[k]=w;
   }
   return out;
 }
