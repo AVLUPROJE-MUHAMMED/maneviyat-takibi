@@ -81,7 +81,7 @@ header.top{background-image:var(--motif);background-size:96px 96px}
 .btime.iki{font-size:.78rem;letter-spacing:-.03em}
 .seg:has(.iki){padding:0 2px}
 .seg.k.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
-.seg.x.on.madeup{background:var(--late-soft);border-color:var(--late);color:var(--late-ink)}
+.seg.k.madeup{background:var(--late-soft);border-color:var(--late);color:var(--late-ink);font-weight:700;white-space:nowrap;font-size:.84rem;letter-spacing:-.02em;padding-inline:2px}
 .seg.g.on{background:var(--late-soft);border-color:var(--late);color:var(--late-ink);font-weight:700}
 .seg.x.on{background:var(--no-soft);border-color:var(--no);color:var(--no);font-weight:700}
 .kz{border:1px dashed var(--accent);background:transparent;border-radius:10px;height:42px;padding:0 8px;font-size:.82rem;color:var(--accent);white-space:nowrap}
@@ -252,7 +252,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 51</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 52</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -649,11 +649,11 @@ function render(){
   // namaz
   const d=day(cur); const V=$("vakitler"); V.replaceChildren(); const madeUpCur=madeUp();
   for(const [k,name] of VAKIT){
-    const st=d.n[k];
+    const st=d.n[k], mu=st==="x"&&madeUpCur.has(cur+":"+k);
     V.append(el("div",{class:"vrow"},
       el("div",{class:"vname"},name),
-      el("button",{class:"seg k"+(st==="k"?" on":""),"aria-pressed":st==="k",onclick:()=>{const x=ensure(cur);if(x.a)delete x.a[k];x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?(k==="sabah"&&VT[cur].gunes?el("span",{class:"btime num iki"},VT[cur].imsak+"\u2009/\u2009"+VT[cur].gunes):el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k])):null),
-      el("button",{class:"seg x"+(st==="x"?(madeUpCur.has(cur+":"+k)?" on madeup":" on"):""),"aria-pressed":st==="x",onclick:()=>{const x=ensure(cur);if(x.a)delete x.a[k];x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
+      el("button",{class:"seg k"+(st==="k"?" on":mu?" madeup":""),"aria-pressed":st==="k"||mu,onclick:()=>{if(mu){toast(name+" kaza edildi");return}const x=ensure(cur);if(x.a)delete x.a[k];x.n[k]=x.n[k]==="k"?"":"k";markDay(cur);render()}},mu?"Kaza edildi":"Kıldım",VT[cur]&&VT[cur][k==="sabah"?"imsak":k]?(k==="sabah"&&VT[cur].gunes?el("span",{class:"btime num iki"},VT[cur].imsak+"\u2009/\u2009"+VT[cur].gunes):el("span",{class:"btime num"},VT[cur][k==="sabah"?"imsak":k])):null),
+      el("button",{class:"seg x"+(st==="x"&&!mu?" on":""),"aria-pressed":st==="x"&&!mu,onclick:()=>{const x=ensure(cur);if(x.a)delete x.a[k];x.n[k]=x.n[k]==="x"?"":"x";markDay(cur);render();if(x.n[k]==="x")toast(name+(k==="yatsi"?" ve vitir":"")+" yeni kaza listesine eklendi")}},"Kılmadım"),
       kazaBtn(d,k,name)
     ));
   }
