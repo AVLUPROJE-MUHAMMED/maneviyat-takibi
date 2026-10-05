@@ -252,7 +252,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 52</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 53</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -906,20 +906,23 @@ function buildXlsx(){
 /* PDF: tablo sayfa sayfa tuvale çizilir, sayfalar JPEG olarak PDF'e konur (Türkçe harfler sorunsuz) */
 async function buildPdf(){
   const {head,rows}=tableData();
-  const W=1684,Hh=1190,M=40,RH=34,HEAD=44,TOP=96, per=Math.floor((Hh-TOP-HEAD-M)/RH);
+  const W=1684,Hh=1190,M=40,HEAD=44,TOP=96;
+  /* her sayfa bir ay */
+  const months=[]; for(const r of rows){const k=r.d.slice(0,7); if(!months.length||months[months.length-1].k!==k) months.push({k,rows:[]}); months[months.length-1].rows.push(r);}
   const wts=head.map((h,i)=>i===0?1.5:/Risale|Cevşen/.test(h)?2.3:/Kaza/.test(h)?1.25:0.95);
   const sum=wts.reduce((a,b)=>a+b,0), cw=wts.map(w=>w/sum*(W-2*M));
   const COL={ok:["#23804f","#fff"],late:["#d9a31c","#fff"],no:["#b83a32","#fff"],plan:["#e4e9ec","#18262f"],na:["#f3f5f6","#5b6b75"]};
-  const pages=Math.ceil(rows.length/per), imgs=[];
+  const pages=months.length, imgs=[];
   const fit=(ctx,t,w)=>{if(ctx.measureText(t).width<=w)return t;while(t.length>1&&ctx.measureText(t+"…").width>w)t=t.slice(0,-1);return t+"…"};
   for(let p=0;p<pages;p++){
+    const mo=months[p], RH=Math.min(34,Math.floor((Hh-TOP-HEAD-M)/mo.rows.length)), ay=parse(mo.k+"-01").toLocaleDateString("tr-TR",{month:"long",year:"numeric"});
     const cv=document.createElement("canvas"); cv.width=W; cv.height=Hh; const ctx=cv.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,Hh);
-    ctx.fillStyle="#1f4f7a"; ctx.font="bold 34px Georgia, serif"; ctx.textBaseline="middle"; ctx.fillText("CENNET YOLU · 1 yıllık plan",M,M+12);
+    ctx.fillStyle="#1f4f7a"; ctx.font="bold 34px Georgia, serif"; ctx.textBaseline="middle"; ctx.fillText("CENNET YOLU · 1 yıllık plan · "+ay.charAt(0).toLocaleUpperCase("tr-TR")+ay.slice(1),M,M+12);
     ctx.fillStyle="#5b6b75"; ctx.font="20px system-ui, sans-serif"; ctx.textAlign="right"; ctx.fillText("Sayfa "+(p+1)+" / "+pages+" · "+new Date().toLocaleDateString("tr-TR"),W-M,M+12); ctx.textAlign="left";
     let x=M; ctx.font="bold 19px system-ui, sans-serif";
     head.forEach((h,i)=>{ctx.fillStyle="#1f4f7a";ctx.fillRect(x+2,TOP,cw[i]-4,HEAD-4);ctx.fillStyle="#fff";ctx.textAlign="center";ctx.fillText(fit(ctx,i?h:"Tarih",cw[i]-10),x+cw[i]/2,TOP+HEAD/2-2);x+=cw[i]});
-    rows.slice(p*per,(p+1)*per).forEach((r,ri)=>{
+    mo.rows.forEach((r,ri)=>{
       const y=TOP+HEAD+ri*RH; x=M;
       ctx.textAlign="left"; ctx.fillStyle="#18262f"; ctx.font="18px system-ui, sans-serif"; ctx.fillText(r.label,x+6,y+RH/2); x+=cw[0];
       r.cells.forEach((c,ci)=>{const [bg,fg]=COL[c.c]||COL.na;const w=cw[ci+1];ctx.fillStyle=bg;ctx.beginPath();(ctx.roundRect?ctx.roundRect(x+2,y+2,w-4,RH-4,6):ctx.rect(x+2,y+2,w-4,RH-4));ctx.fill();
