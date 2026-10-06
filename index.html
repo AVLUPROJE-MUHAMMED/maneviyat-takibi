@@ -252,7 +252,7 @@ if(c.token&&!(k&&k.on&&k.hash))document.getElementById("lock").classList.add("of
   </section>
 
   <details class="card" style="margin-top:14px" id="settings">
-    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 55</span></summary>
+    <summary>Ayarlar, bildirimler ve yedek <span class="small muted" id="surum">· sürüm 56</span></summary>
     <form id="setform" autocomplete="off">
       <fieldset>
         <legend>20 yıllık kaza borcu</legend>
@@ -414,7 +414,7 @@ function defaults(){
     /* kaldığı yer: tablodaki ilk kırmızı Risale günü 1 Ağustos, Şualar 31. sayfa; ilk kırmızı Kur'an günü 5 Ağustos, 499. sayfa */
     risale:{books:BOOKS.map(([name,pages])=>({name,pages})),startBook:4,startPage:30,anchorDate:"2026-10-03",perDay:10},
     quran:{arStart:498,mealStart:498,anchorDate:"2026-10-03",perDay:2,endPage:600},
-    cevsen:{weekStart:6,plan:["Sureler kısmı","Cevşen","Evrad-ı Kudsiye","Delailü'n-Nur ve İsm-i Azam","Münacatü'l-Kur'an","Tahmidiye","Hülasatü'l-Hakaik ve Dua"]},
+    cevsen:{weekStart:6,plan:["Sureler kısmı","Cevşen","Evrad-ı Kudsiye","Delailü'n-Nur ve İsm-i Azam","Münacatü'l-Kur'an","Tahmidiye","Hülasatü'l-Hülasa ve Dua"]},
     /* bildirimler: vakitler Diyanet ilçe numarasına göre (9541 = İstanbul) */
     notify:defaultNotify()
   },days:{}};
@@ -454,7 +454,7 @@ function normalize(s){
   if(!(r.startBook>=0&&r.startBook<r.books.length)) r.startBook=0;
   if(!Array.isArray(out.settings.cevsen.plan)||out.settings.cevsen.plan.length!==7) out.settings.cevsen.plan=d.settings.cevsen.plan;
   /* İsm-i Azam bir gün öne, Delailü'n-Nur ile birlikte okunur (6 Ekim 2026) */
-  { const P=out.settings.cevsen.plan; if(P[3]==="Delailü'n-Nur"&&P[4]==="İsm-i Azam ve Münacatü'l-Kur'an"){ P[3]="Delailü'n-Nur ve İsm-i Azam"; P[4]="Münacatü'l-Kur'an"; } }
+  { const P=out.settings.cevsen.plan; if(P[3]==="Delailü'n-Nur"&&P[4]==="İsm-i Azam ve Münacatü'l-Kur'an"){ P[3]="Delailü'n-Nur ve İsm-i Azam"; P[4]="Münacatü'l-Kur'an"; } if(P[6]==="Hülasatü'l-Hakaik ve Dua") P[6]="Hülasatü'l-Hülasa ve Dua"; }
   for(const [k,v] of Object.entries(s.days||{})) if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&v) out.days[k]=normDay(v);
   return out;
 }
